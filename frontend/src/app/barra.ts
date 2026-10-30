@@ -1,3 +1,4 @@
+import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AvatarVista } from './avatar';
@@ -27,6 +28,11 @@ import { Sesion } from './sesion';
             <b>{{ sesion.perfil()?.nombre }}</b>
             <a role="menuitem" routerLink="/ajustes" (click)="menu.set(false)">Ajustes</a>
             <a role="menuitem" routerLink="/perfiles" (click)="menu.set(false)">Cambiar perfil</a>
+            @if (sesion.esAdmin()) {
+              <span class="separador"></span>
+              <a role="menuitem" routerLink="/admin/usuarios" (click)="menu.set(false)">Usuarios</a>
+              <a role="menuitem" routerLink="/admin/avatares" (click)="menu.set(false)">Avatares</a>
+            }
             <button role="menuitem" (click)="salir()">Cerrar sesión</button>
           </div>
         }
@@ -38,6 +44,18 @@ export class Barra {
   protected readonly sesion = inject(Sesion);
   private readonly router = inject(Router);
   protected readonly menu = signal(false);
+
+  constructor() {
+    if (this.sesion.token() && !this.sesion.rolCargado) {
+      this.sesion.rolCargado = true;
+      inject(HttpClient)
+        .get<{ cuenta: { rol: string } }>('/api/auth/me')
+        .subscribe({
+          next: (r) => this.sesion.esAdmin.set(r.cuenta.rol === 'admin'),
+          error: () => (this.sesion.rolCargado = false),
+        });
+    }
+  }
 
   protected salir() {
     this.sesion.cerrar();

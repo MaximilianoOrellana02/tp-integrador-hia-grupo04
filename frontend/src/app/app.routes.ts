@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { conSesion } from './sesion';
+import { conSesion, soloAdmin } from './sesion';
 
 export const routes: Routes = [
   { path: 'entrar', loadComponent: () => import('./entrar').then((m) => m.Entrar) },
@@ -15,6 +15,8 @@ export const routes: Routes = [
   { path: 'genero/:tipo/:genero', canActivate: [conSesion], data: { seccion: 'genero' }, loadComponent: () => import('./explorar').then((m) => m.Explorar) },
   { path: 'originales/:id', canActivate: [conSesion], data: { seccion: 'originales' }, loadComponent: () => import('./explorar').then((m) => m.Explorar) },
   { path: 'marca/:id', canActivate: [conSesion], data: { seccion: 'marca' }, loadComponent: () => import('./explorar').then((m) => m.Explorar) },
+  { path: 'admin/usuarios', canActivate: [conSesion, soloAdmin], loadComponent: () => import('./usuarios').then((m) => m.Usuarios) },
+  { path: 'admin/avatares', canActivate: [conSesion, soloAdmin], loadComponent: () => import('./avatares-admin').then((m) => m.AvataresAdmin) },
   { path: 'mi-lista', canActivate: [conSesion], loadComponent: () => import('./mi-lista').then((m) => m.MiLista) },
   { path: '', pathMatch: 'full', canActivate: [conSesion], data: { seccion: 'inicio' }, loadComponent: () => import('./explorar').then((m) => m.Explorar) },
   { path: '**', redirectTo: '' },

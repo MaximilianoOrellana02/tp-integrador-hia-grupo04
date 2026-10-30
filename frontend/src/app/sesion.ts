@@ -1,7 +1,7 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { catchError, throwError } from 'rxjs';
+import { catchError, map, of, throwError } from 'rxjs';
 
 export interface Perfil {
   id: number;
@@ -19,6 +19,9 @@ const CLAVE_PERFIL = 'maxflix.perfil';
 @Injectable({ providedIn: 'root' })
 export class Sesion {
   readonly token = signal(localStorage.getItem(CLAVE_TOKEN));
+  /** Si la cuenta es administradora (lo dice el backend; solo cambia qué se muestra, cada ruta lo vuelve a revisar). */
+  readonly esAdmin = signal(false);
+  rolCargado = false;
   readonly perfil = signal<Perfil | null>(JSON.parse(localStorage.getItem(CLAVE_PERFIL) ?? 'null'));
 
   iniciar(token: string) {
@@ -46,8 +49,21 @@ export class Sesion {
     localStorage.removeItem(CLAVE_PERFIL);
     this.token.set(null);
     this.perfil.set(null);
+    this.esAdmin.set(false);
+    this.rolCargado = false;
   }
 }
+
+/** Deja pasar solo a una cuenta administradora (el backend lo revisa igual en cada pedido). */
+export const soloAdmin: CanActivateFn = () => {
+  const router = inject(Router);
+  return inject(HttpClient)
+    .get<{ cuenta: { rol: string } }>('/api/auth/me')
+    .pipe(
+      map((r) => (r.cuenta.rol === 'admin' ? true : router.createUrlTree(['/']))),
+      catchError(() => of(router.createUrlTree(['/entrar']))),
+    );
+};
 
 /** Suma el token a los pedidos a la API. Un 401 significa que la sesión venció: vuelve a entrar. */
 export const agregarToken: HttpInterceptorFn = (pedido, siguiente) => {

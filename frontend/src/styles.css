@@ -1663,3 +1663,97 @@ select option {
 .grilla.actores {
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
 }
+
+/* Administración */
+.separador {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--borde);
+}
+
+.cuentas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.tarjeta-cuenta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.cuenta-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.perfiles-cuenta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.perfil-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 3px;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.grilla-avatares {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.avatar-admin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.avatar-admin img {
+  width: 96px;
+  height: 96px;
+  border-radius: 22%;
+  object-fit: cover;
+}
+
+.avatar-admin.retirado img {
+  opacity: 0.4;
+}
+
+.acciones-avatar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+label.secundario,
+label.principal {
+  cursor: pointer;
+}
+
+.apagado {
+  opacity: 0.4;
+  pointer-events: none;
+}
