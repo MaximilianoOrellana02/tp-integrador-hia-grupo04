@@ -151,7 +151,7 @@ const etiquetaDe = (v: Video) => 'T' + v.season + ' E' + numeroDe(v);
           <div class="fuentes">
             @for (f of fuentes(); track f.id; let primera = $first) {
               <button class="fuente" [class.apagada]="f.nivel === 'no'" [class.mejor]="primera && f.nivel === 'compatible'" (click)="reproducir(f)">
-                <span class="chip" [class.chip-blanco]="f.nivel === 'compatible'">{{ nombreNivel[f.nivel] }}</span>
+                <span class="chip" [attr.data-nivel]="f.nivel">{{ nombreNivel[f.nivel] }}</span>
                 <b>{{ f.nombre }}</b>
                 <span class="nota">{{ f.addon }} · {{ f.detalle }}</span>
                 @if (f.motivo) {

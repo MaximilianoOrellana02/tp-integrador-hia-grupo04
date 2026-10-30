@@ -1,14 +1,15 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { AvatarVista } from './avatar';
 import { Sesion } from './sesion';
 
 /** La barra de arriba: cápsula de vidrio con las secciones, la lupa y el menú del perfil. */
 @Component({
   selector: 'app-barra',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, AvatarVista],
   template: `
     <header class="barra-fija">
-      <a class="marca chica" routerLink="/">Max<span>Flix</span></a>
+      <a class="marca chica" routerLink="/"><span class="logo-cuadro" aria-hidden="true"></span>MaxFlix</a>
       <nav class="capsula" aria-label="Secciones">
         <a routerLink="/" routerLinkActive="activa" [routerLinkActiveOptions]="{ exact: true }">Para ti</a>
         <a routerLink="/peliculas" routerLinkActive="activa">Películas</a>
@@ -18,11 +19,7 @@ import { Sesion } from './sesion';
       <div class="barra-derecha">
         <a class="boton-icono" routerLink="/buscar" routerLinkActive="activa" aria-label="Buscar">🔍</a>
         <button class="avatar-chico" (click)="menu.set(!menu())" aria-haspopup="menu" [attr.aria-expanded]="menu()" aria-label="Menú del perfil">
-          @if (sesion.perfil()?.avatarUrl; as url) {
-            <img [src]="url" alt="" />
-          } @else {
-            {{ sesion.perfil()?.nombre?.[0] ?? '?' }}
-          }
+          <app-avatar [nombre]="sesion.perfil()?.nombre ?? ''" [avatar]="sesion.perfil()?.avatar ?? 'avatar_01'" [url]="sesion.perfil()?.avatarUrl" [tamano]="38" [redondo]="true" />
         </button>
         @if (menu()) {
           <div class="cortina" (click)="menu.set(false)"></div>

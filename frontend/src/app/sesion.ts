@@ -8,6 +8,8 @@ export interface Perfil {
   nombre: string;
   avatar: string;
   avatarUrl?: string | null;
+  idiomasAudio?: string[];
+  calidadMaxima?: string;
 }
 
 const CLAVE_TOKEN = 'maxflix.token';
@@ -27,6 +29,16 @@ export class Sesion {
   elegirPerfil(perfil: Perfil) {
     localStorage.setItem(CLAVE_PERFIL, JSON.stringify(perfil));
     this.perfil.set(perfil);
+  }
+
+  /** El perfil elegido cambió en el backend (nombre, avatar o preferencias). */
+  actualizarPerfil(perfil: Perfil) {
+    if (this.perfil()?.id === perfil.id) this.elegirPerfil(perfil);
+  }
+
+  olvidarPerfil() {
+    localStorage.removeItem(CLAVE_PERFIL);
+    this.perfil.set(null);
   }
 
   cerrar() {

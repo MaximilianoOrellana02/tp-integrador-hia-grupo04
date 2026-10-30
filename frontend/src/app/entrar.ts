@@ -15,7 +15,7 @@ import { Sesion } from './sesion';
       }
     </div>
     <main class="centrado sobre-mosaico">
-      <h1 class="marca">Max<span>Flix</span></h1>
+      <h1 class="marca"><span class="logo-cuadro" aria-hidden="true"></span>MaxFlix</h1>
       <form class="tarjeta vidrio" (ngSubmit)="enviar()">
         <h2>{{ creando() ? 'Crear cuenta' : 'Iniciar sesión' }}</h2>
         @if (creando()) {
