@@ -10,6 +10,32 @@ export interface Copia {
   anio?: string | null;
   generos?: string[];
   descripcion?: string | null;
+  puntajeImdb?: string | null;
+}
+
+/** Un título como lo arman las filas del backend. */
+export interface Titulo {
+  imdbId?: string;
+  tipo: string;
+  titulo: string;
+  poster?: string | null;
+  fondo?: string | null;
+  logo?: string | null;
+  anio?: string | null;
+  descripcion?: string | null;
+  generos?: string[];
+}
+
+/** Una fila de Inicio, Películas o Series: destacado, top10, posters, banner, generos o sagas. */
+export interface Fila {
+  tipo: string;
+  nombre?: string;
+  detalle?: string;
+  etiqueta?: string;
+  titulo?: Titulo;
+  items?: Titulo[];
+  mas?: Fila[];
+  plataforma?: string;
 }
 
 export interface Episodio {

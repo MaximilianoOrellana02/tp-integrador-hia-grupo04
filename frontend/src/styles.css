@@ -982,3 +982,208 @@ select option {
 .ajuste-sub .nota {
   flex: 1;
 }
+
+/* Barra: lupa y menú del perfil */
+.barra-derecha {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.boton-icono {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--borde);
+  border-radius: 50%;
+  background: var(--panel);
+  text-decoration: none;
+}
+
+.boton-icono.activa {
+  background: #fff;
+}
+
+button.avatar-chico {
+  padding: 0;
+  color: #fff;
+}
+
+.cortina {
+  position: fixed;
+  z-index: 29;
+  inset: 0;
+}
+
+.menu-perfil {
+  position: absolute;
+  z-index: 30;
+  top: 48px;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 190px;
+  padding: 8px;
+  border-radius: 14px;
+  background: rgba(20, 20, 22, 0.94);
+}
+
+.menu-perfil b {
+  padding: 8px 10px;
+}
+
+.menu-perfil a,
+.menu-perfil button {
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #fff;
+  text-align: left;
+  text-decoration: none;
+}
+
+.menu-perfil a:hover,
+.menu-perfil button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Destacado: puntitos */
+.puntos {
+  position: absolute;
+  z-index: 1;
+  right: clamp(16px, 4vw, 48px);
+  bottom: 28px;
+  display: flex;
+  gap: 8px;
+}
+
+.puntos button {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.4);
+  transition: width 0.2s, background 0.2s;
+}
+
+.puntos button.activo {
+  width: 26px;
+  background: #fff;
+}
+
+/* Banner de nueva temporada */
+.banner {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: 220px;
+  margin: 0 clamp(16px, 4vw, 48px) 30px;
+  padding: 24px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #17171a center / cover;
+  text-decoration: none;
+}
+
+.banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.85), transparent 75%);
+}
+
+.banner-texto {
+  position: relative;
+  max-width: 460px;
+}
+
+.banner-texto h2 {
+  margin: 0 0 6px;
+  font-size: 26px;
+}
+
+/* Mi lista */
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.chip-filtro {
+  padding: 8px 14px;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  background: var(--panel);
+  color: #fff;
+  font-size: 14px;
+}
+
+.chip-filtro.activo {
+  background: #fff;
+  color: #000;
+}
+
+.filtros select {
+  margin-left: auto;
+}
+
+.tarjeta-lista {
+  position: relative;
+}
+
+.tarjeta-lista .poster {
+  width: auto;
+}
+
+.quitar {
+  position: absolute;
+  z-index: 2;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.tarjeta-lista:hover .quitar,
+.quitar:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .quitar {
+    opacity: 1;
+  }
+}
+
+.insignia {
+  position: absolute;
+  z-index: 1;
+  top: 6px;
+  left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.sugeridos {
+  margin: 36px -16px 0;
+}
