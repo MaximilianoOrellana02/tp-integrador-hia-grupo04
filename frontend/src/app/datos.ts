@@ -36,6 +36,37 @@ export interface Fila {
   items?: Titulo[];
   mas?: Fila[];
   plataforma?: string;
+  generos?: GeneroTarjeta[];
+  sagas?: SagaResumen[];
+}
+
+export interface GeneroTarjeta {
+  nombre: string;
+  color: string;
+  tipo: string;
+  genero: string;
+}
+
+export interface SagaResumen {
+  id: number;
+  nombre: string;
+  descripcion?: string | null;
+  fondo?: string | null;
+  poster?: string | null;
+  cantidad: number;
+  anios?: string | null;
+}
+
+export interface Plataforma {
+  id: string;
+  nombre: string;
+  color: string;
+  cantidad?: number;
+  descripcion?: string;
+  peliculas?: number;
+  series?: number;
+  estrenos?: number;
+  anio?: number;
 }
 
 export interface Episodio {

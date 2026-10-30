@@ -2,19 +2,23 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Barra } from './barra';
-import { Copia, Fila, Progreso, terminado } from './datos';
+import { Copia, Fila, Plataforma, Progreso, terminado } from './datos';
 import { FilaVista, Heroe } from './piezas';
 import { Sesion } from './sesion';
 
-type Seccion = 'inicio' | 'peliculas' | 'series';
+type Seccion = 'inicio' | 'peliculas' | 'series' | 'genero' | 'originales' | 'marca';
 
-const RUTAS: Record<Seccion, string> = { inicio: '/api/inicio', peliculas: '/api/peliculas', series: '/api/series' };
+const RUTAS = { inicio: '/api/inicio', peliculas: '/api/peliculas', series: '/api/series' } as const;
 // Cuántos píxeles antes del final se pide la página siguiente
 const ADELANTO_PX = 900;
+const MARCAS = [
+  { id: 'disney', nombre: 'Disney', color: '#1546d8' },
+  { id: 'marvel', nombre: 'Marvel', color: '#e62429' },
+];
 
 /**
- * Para ti, Películas y Series: el mismo esqueleto con otro origen de datos. Las filas llegan por
- * páginas y la siguiente se pide al acercarse al final. Géneros y sagas llegan con sus pantallas.
+ * Para ti, Películas, Series, un género, «Originales de» y una marca de Disney+: el mismo esqueleto
+ * con otro origen de datos. Las filas llegan por páginas y la siguiente se pide al acercarse al final.
  * Solo Para ti suma «Seguir viendo», las películas libres, Mi lista y los catálogos de los addons.
  */
 @Component({
@@ -28,6 +32,33 @@ const ADELANTO_PX = 900;
       <div class="espacio-barra"></div>
     }
     <main class="filas">
+      @if (titulo(); as t) {
+        <div class="titulo-pantalla">
+          <span class="etiqueta">{{ t.etiqueta }}</span>
+          <h1>{{ t.nombre }}</h1>
+        </div>
+      }
+      @if (plataformas().length) {
+        <nav class="plataformas" aria-label="Plataformas">
+          @for (p of plataformas(); track p.id) {
+            <a class="plataforma" [class.activa]="p.id === plataforma()?.id" [routerLink]="['/originales', p.id]">
+              <span class="punto-color" [style.background]="p.color"></span>{{ p.nombre }}
+            </a>
+          }
+        </nav>
+        @if (plataforma(); as p) {
+          <p class="nota datos-plataforma">
+            {{ p.peliculas }} películas · {{ p.series }} series · {{ p.estrenos }} estrenos {{ p.anio }}
+          </p>
+          @if (p.id === 'disney') {
+            <div class="pista">
+              @for (m of marcas; track m.id) {
+                <a class="tarjeta-marca" [style.border-color]="m.color" [routerLink]="['/marca', m.id]">{{ m.nombre }}</a>
+              }
+            </div>
+          }
+        }
+      }
       @if (error()) {
         <p class="aviso centrado-texto">No se pudo cargar. Probá de nuevo en un momento.</p>
       }
@@ -64,19 +95,39 @@ const ADELANTO_PX = 900;
 export class Explorar {
   private readonly sesion = inject(Sesion);
   private readonly http = inject(HttpClient);
-  private readonly seccion = inject(ActivatedRoute).snapshot.data['seccion'] as Seccion;
+  private readonly instantanea = inject(ActivatedRoute).snapshot;
+  private readonly seccion = this.instantanea.data['seccion'] as Seccion;
   private readonly final = viewChild.required<ElementRef<HTMLElement>>('final');
 
+  protected readonly marcas = MARCAS;
   private readonly delBackend = signal<Fila[]>([]);
   private readonly deAddons = signal<Fila[]>([]);
   private readonly libres = signal<Copia[]>([]);
   private readonly lista = signal<Copia[]>([]);
   private readonly progresos = signal<Progreso[]>([]);
+  protected readonly plataformas = signal<Plataforma[]>([]);
+  protected readonly plataforma = signal<Plataforma | null>(null);
   protected readonly error = signal(false);
   protected readonly cargandoMas = signal(false);
   private proxima: number | null = 1;
   private pidiendo = false;
   private destruido = false;
+
+  /** El título de las pantallas que no son Para ti, Películas ni Series. */
+  protected readonly titulo = computed(() => {
+    const p = this.instantanea.paramMap;
+    const q = this.instantanea.queryParamMap;
+    switch (this.seccion) {
+      case 'genero':
+        return { etiqueta: p.get('tipo') === 'series' ? 'Series · Género' : 'Películas · Género', nombre: q.get('n') ?? p.get('genero') ?? '' };
+      case 'originales':
+        return { etiqueta: 'Originales de', nombre: this.plataforma()?.nombre ?? '' };
+      case 'marca':
+        return { etiqueta: 'Disney+', nombre: MARCAS.find((m) => m.id === p.get('id'))?.nombre ?? '' };
+      default:
+        return null;
+    }
+  });
 
   protected readonly destacados = computed(() => {
     const d = this.delBackend().find((f) => f.tipo === 'destacado' && f.titulo?.imdbId);
@@ -99,8 +150,8 @@ export class Explorar {
       items: copias.map((c) => ({ titulo: c.nombre, tipo: c.tipo, imdbId: c.id, poster: c.poster })),
     });
     const propias = this.seccion === 'inicio' ? [aFila('Películas libres', this.libres()), aFila('Mi lista', this.lista()), ...this.deAddons()] : [];
-    const delServidor = this.delBackend().filter((f) => !['destacado', 'generos', 'sagas'].includes(f.tipo));
-    return [...propias, ...delServidor].filter((f) => f.tipo === 'banner' || f.items?.some((t) => t.imdbId));
+    const delServidor = this.delBackend().filter((f) => f.tipo !== 'destacado');
+    return [...propias, ...delServidor].filter((f) => f.tipo === 'banner' || (f.tipo === 'generos' ? f.generos?.length : f.tipo === 'sagas' ? f.sagas?.length : f.items?.some((t) => t.imdbId)));
   });
 
   constructor() {
@@ -124,6 +175,20 @@ export class Explorar {
     });
   }
 
+  private ruta(): string {
+    const p = this.instantanea.paramMap;
+    switch (this.seccion) {
+      case 'genero':
+        return '/api/genero/' + encodeURIComponent(p.get('tipo') ?? '') + '/' + encodeURIComponent(p.get('genero') ?? '');
+      case 'originales':
+        return '/api/originales/' + encodeURIComponent(p.get('id') ?? '');
+      case 'marca':
+        return '/api/marcas/' + encodeURIComponent(p.get('id') ?? '');
+      default:
+        return RUTAS[this.seccion];
+    }
+  }
+
   /** Pide la página siguiente si el final ya está cerca de la pantalla. */
   private revisar() {
     if (this.destruido) return;
@@ -136,23 +201,29 @@ export class Explorar {
     const pagina = this.proxima;
     this.pidiendo = true;
     this.cargandoMas.set(pagina > 1);
-    this.http.get<{ filas: Fila[]; siguiente?: number | null }>(RUTAS[this.seccion] + (pagina > 1 ? '?pagina=' + pagina : '')).subscribe({
-      next: (r) => {
-        const conocidas = new Set(this.delBackend().map((f) => f.nombre).filter(Boolean));
-        this.delBackend.update((a) => [...a, ...(r.filas ?? []).filter((f) => !f.nombre || !conocidas.has(f.nombre))]);
-        this.proxima = r.siguiente ?? null;
-        this.pidiendo = false;
-        this.cargandoMas.set(false);
-        // Si el contenido todavía no llena la pantalla, el scroll no va a avisar
-        setTimeout(() => this.revisar());
-      },
-      error: () => {
-        this.pidiendo = false;
-        this.cargandoMas.set(false);
-        this.proxima = null;
-        if (pagina === 1) this.error.set(true);
-      },
-    });
+    this.http
+      .get<{ filas?: Fila[]; destacado?: Fila; plataformas?: Plataforma[]; plataforma?: Plataforma; siguiente?: number | null }>(this.ruta() + (pagina > 1 ? '?pagina=' + pagina : ''))
+      .subscribe({
+        next: (r) => {
+          // «Originales de» trae el destacado y las pestañas aparte, solo en la primera página
+          if (r.plataformas) this.plataformas.set(r.plataformas);
+          if (r.plataforma) this.plataforma.set(r.plataforma);
+          const nuevas = [...(r.destacado ? [r.destacado] : []), ...(r.filas ?? [])];
+          const conocidas = new Set(this.delBackend().map((f) => f.nombre).filter(Boolean));
+          this.delBackend.update((a) => [...a, ...nuevas.filter((f) => !f.nombre || !conocidas.has(f.nombre))]);
+          this.proxima = r.siguiente ?? null;
+          this.pidiendo = false;
+          this.cargandoMas.set(false);
+          // Si el contenido todavía no llena la pantalla, el scroll no va a avisar
+          setTimeout(() => this.revisar());
+        },
+        error: () => {
+          this.pidiendo = false;
+          this.cargandoMas.set(false);
+          this.proxima = null;
+          if (pagina === 1) this.error.set(true);
+        },
+      });
   }
 
   protected imagen(url?: string | null) {

@@ -62,9 +62,37 @@ export class Heroe {
           <p class="nota">{{ fila().detalle }}</p>
         </div>
       </a>
+    } @else if (fila().tipo === 'generos' && fila().generos?.length) {
+      <section class="fila">
+        <h2>{{ fila().nombre }}</h2>
+        <div class="pista">
+          @for (g of fila().generos; track g.genero + g.tipo) {
+            <a class="tarjeta-genero" [style.border-left-color]="g.color" [routerLink]="['/genero', g.tipo, g.genero]" [queryParams]="{ n: g.nombre }">{{ g.nombre }}</a>
+          }
+        </div>
+      </section>
+    } @else if (fila().tipo === 'sagas' && fila().sagas?.length) {
+      <section class="fila">
+        <h2>{{ fila().nombre }}<span class="nota"> · {{ fila().detalle }}</span></h2>
+        <div class="pista">
+          @for (s of fila().sagas; track s.id) {
+            <a class="tarjeta-saga" [routerLink]="['/saga', s.id]" [style.background-image]="s.fondo ? 'url(&quot;' + s.fondo + '&quot;)' : 'none'">
+              <span class="tarjeta-saga-texto">
+                <b>{{ s.nombre }}</b>
+                <span class="nota">{{ s.cantidad }} películas · {{ s.anios }}</span>
+              </span>
+            </a>
+          }
+        </div>
+      </section>
     } @else if (fila().items?.length) {
       <section class="fila" [class.top10]="fila().tipo === 'top10'">
-        <h2>{{ fila().nombre }}</h2>
+        <h2>
+          {{ fila().nombre }}
+          @if (fila().plataforma; as p) {
+            <a class="ver-todo" [routerLink]="['/originales', p]">Ver todo ›</a>
+          }
+        </h2>
         <div class="pista">
           @for (t of fila().items; track $index) {
             @if (t.imdbId) {

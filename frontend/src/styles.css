@@ -1491,3 +1491,175 @@ select option {
   opacity: 0.6;
   cursor: wait;
 }
+
+/* Géneros, sagas, Originales y Buscar */
+.ver-todo {
+  margin-left: 12px;
+  color: var(--suave);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ver-todo:hover {
+  color: #fff;
+}
+
+.titulo-pantalla {
+  padding: 28px clamp(16px, 4vw, 48px) 8px;
+}
+
+.titulo-pantalla h1 {
+  margin: 4px 0 0;
+  font-size: 34px;
+}
+
+.plataformas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px clamp(16px, 4vw, 48px);
+}
+
+.plataforma {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.plataforma:hover {
+  background: var(--panel-alto);
+}
+
+.plataforma.activa {
+  border-color: #fff;
+  background: #fff;
+  color: var(--fondo);
+}
+
+.punto-color {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.datos-plataforma {
+  margin: 4px clamp(16px, 4vw, 48px) 14px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.tarjeta-marca {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 190px;
+  height: 90px;
+  border: 1px solid var(--borde);
+  border-bottom-width: 3px;
+  border-radius: 14px;
+  background: var(--panel);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tarjeta-marca:hover {
+  background: var(--panel-alto);
+}
+
+.tarjeta-genero {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 150px;
+  height: 78px;
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--borde-fuerte);
+  border-radius: 12px;
+  background: var(--panel);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tarjeta-genero:hover {
+  background: var(--panel-alto);
+}
+
+.tarjeta-saga,
+.tarjeta-saga-grande {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: flex-end;
+  overflow: hidden;
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  background: var(--panel) center / cover;
+  color: #fff;
+  text-decoration: none;
+}
+
+.tarjeta-saga {
+  width: 290px;
+  height: 163px;
+}
+
+.tarjeta-saga-grande {
+  min-height: 190px;
+  margin: 18px 0 4px;
+}
+
+.tarjeta-saga:hover,
+.tarjeta-saga-grande:hover {
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.tarjeta-saga-texto {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(0deg, rgba(8, 8, 8, 0.92), transparent);
+}
+
+.tarjeta-saga-grande .tarjeta-saga-texto {
+  align-items: flex-start;
+  min-height: 190px;
+  justify-content: flex-end;
+  padding: 20px;
+  background: linear-gradient(90deg, rgba(8, 8, 8, 0.92), rgba(8, 8, 8, 0.35));
+}
+
+.principal.chico {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.recientes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.recientes .etiqueta {
+  margin: 0 4px 0 0;
+}
+
+.grilla.actores {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+}
