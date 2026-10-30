@@ -762,3 +762,146 @@ select option {
     scroll-behavior: auto !important;
   }
 }
+
+/* Controles propios del reproductor */
+.reproductor {
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.reproductor.sin-cursor {
+  cursor: none;
+}
+
+.reproductor video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: contain;
+}
+
+.controles {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent 22%, transparent 68%, rgba(0, 0, 0, 0.85));
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+
+.controles > * {
+  pointer-events: auto;
+}
+
+.controles.ocultos {
+  opacity: 0;
+}
+
+.controles.ocultos > * {
+  pointer-events: none;
+}
+
+.controles-abajo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 clamp(12px, 3vw, 32px) 16px;
+}
+
+.fila-controles {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fila-controles button {
+  min-width: 40px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.fila-controles button:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.fila-controles button.grande {
+  font-size: 22px;
+}
+
+.tiempo {
+  color: var(--suave);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.espacio {
+  flex: 1;
+}
+
+.barra-tiempo,
+.barra-volumen {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 5px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #fff var(--lleno, 0%), rgba(255, 255, 255, 0.28) var(--lleno, 0%));
+  cursor: pointer;
+}
+
+.barra-tiempo {
+  width: 100%;
+}
+
+.barra-volumen {
+  width: 90px;
+}
+
+.barra-tiempo::-webkit-slider-thumb,
+.barra-volumen::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.barra-tiempo::-moz-range-thumb,
+.barra-volumen::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.tarjeta-siguiente {
+  position: absolute;
+  z-index: 2;
+  right: clamp(12px, 3vw, 32px);
+  bottom: 110px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 320px;
+  padding: 16px;
+  border-radius: 16px;
+}
+
+@media (max-width: 640px) {
+  .barra-volumen,
+  .fila-controles .tiempo {
+    display: none;
+  }
+}

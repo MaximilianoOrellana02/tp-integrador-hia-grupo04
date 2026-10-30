@@ -40,6 +40,8 @@ export interface Fuente {
 export interface Pedido {
   titulo: Copia;
   episodio: Episodio | null;
+  /** Todos los episodios de la serie, en orden (vacío en películas): de acá sale el siguiente. */
+  episodios: Episodio[];
   fuente: Fuente;
   posicionMs: number;
 }

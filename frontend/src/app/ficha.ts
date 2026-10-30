@@ -184,6 +184,12 @@ export class Ficha {
     }
   }
 
+  private todosLosEpisodios(): Episodio[] {
+    return (this.meta()?.videos ?? [])
+      .map((v) => ({ id: v.id, temporada: v.season, numero: v.episode ?? v.number ?? 0, nombre: v.name ?? v.title, miniatura: v.thumbnail ?? null }))
+      .sort((a, b) => (a.temporada || 999) - (b.temporada || 999) || a.numero - b.numero);
+  }
+
   protected volver() {
     history.length > 1 ? history.back() : this.router.navigateByUrl('/');
   }
@@ -226,6 +232,7 @@ export class Ficha {
     this.reproduccion.pedido.set({
       titulo: this.copia(),
       episodio: this.elegido,
+      episodios: this.todosLosEpisodios(),
       fuente,
       posicionMs: p && !terminado(p) ? p.posicionMs : 0,
     });
