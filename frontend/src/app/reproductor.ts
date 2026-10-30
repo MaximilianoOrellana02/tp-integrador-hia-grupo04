@@ -11,6 +11,49 @@ const AVISO_SIGUIENTE_S = 30;
 const CUENTA_SIGUIENTE_S = 8;
 const VELOCIDADES = [0.75, 1, 1.25, 1.5, 2];
 const CLAVE_VOLUMEN = 'maxflix.volumen';
+const CLAVE_IDIOMA_SUB = 'maxflix.subtitulos';
+const CLAVE_TAMANO_SUB = 'maxflix.tamanoSub';
+
+interface Subtitulo {
+  id: string;
+  lang: string;
+  idioma: string;
+  addon: string;
+  detalle: string;
+}
+
+function leerPreferencia(clave: string): string | null {
+  try {
+    return localStorage.getItem(clave);
+  } catch {
+    return null;
+  }
+}
+
+function guardarPreferencia(clave: string, valor: string) {
+  try {
+    localStorage.setItem(clave, valor);
+  } catch {
+    // Sin almacenamiento: no se recuerda
+  }
+}
+
+/** Corre todas las marcas de tiempo de un WebVTT (las líneas con «-->»), sin pasar de cero. */
+function desplazar(vtt: string, segundos: number): string {
+  if (!segundos) return vtt;
+  const dos = (n: number) => String(n).padStart(2, '0');
+  return vtt
+    .split('\n')
+    .map((linea) =>
+      linea.includes('-->')
+        ? linea.replace(/(?:(\d{1,2}):)?(\d{2}):(\d{2})\.(\d{3})/g, (_, h, m, s, ms) => {
+            const total = Math.max(0, Math.round(((+(h ?? 0) * 60 + +m) * 60 + +s) * 1000 + +ms + segundos * 1000));
+            return dos(Math.floor(total / 3600000)) + ':' + dos(Math.floor((total % 3600000) / 60000)) + ':' + dos(Math.floor((total % 60000) / 1000)) + '.' + String(total % 1000).padStart(3, '0');
+          })
+        : linea,
+    )
+    .join('\n');
+}
 
 /**
  * El `<video>` del navegador con controles propios. HLS va con hls.js donde no es nativo (Chrome,
@@ -22,7 +65,7 @@ const CLAVE_VOLUMEN = 'maxflix.volumen';
 @Component({
   selector: 'app-reproductor',
   template: `
-    <main #contenedor class="reproductor" [class.sin-cursor]="!visibles() && jugando()" (mousemove)="mostrar()" (touchstart)="mostrar()">
+    <main #contenedor class="reproductor" [class.sin-cursor]="!visibles() && jugando()" [class.sub-chico]="tamanoSub() === 'chico'" [class.sub-grande]="tamanoSub() === 'grande'" (mousemove)="mostrar()" (touchstart)="mostrar()">
       <video #video playsinline (click)="alternar()" (dblclick)="pantallaCompleta()"></video>
 
       @if (estado(); as texto) {
@@ -87,8 +130,36 @@ const CLAVE_VOLUMEN = 'maxflix.volumen';
               [style.--lleno]="(silencio() ? 0 : volumen() * 100) + '%'"
               (input)="cambiarVolumen(+$any($event.target).value)"
             />
+            <button (click)="panelSub.set(!panelSub())" [class.activo]="subActivo()" aria-label="Subtítulos">CC</button>
             <button (click)="cambiarVelocidad()" aria-label="Velocidad">{{ velocidad() }}×</button>
             <button (click)="pantallaCompleta()" [attr.aria-label]="completa() ? 'Salir de pantalla completa' : 'Pantalla completa'">{{ completa() ? '⤡' : '⛶' }}</button>
+            @if (panelSub()) {
+              <div class="panel-sub vidrio" role="menu" aria-label="Subtítulos">
+                <button class="opcion" [class.elegida]="!subActivo()" (click)="elegirSubtitulo(null)">Desactivados</button>
+                @for (s of subtitulos(); track s.id) {
+                  <button class="opcion" [class.elegida]="subActivo() === s.id" (click)="elegirSubtitulo(s)">
+                    <b>{{ s.idioma }}</b>
+                    <span class="nota">{{ s.addon }}{{ s.detalle ? ' · ' + s.detalle : '' }}</span>
+                  </button>
+                }
+                @if (!subtitulos().length) {
+                  <p class="nota">No hay subtítulos para este video.</p>
+                }
+                @if (subActivo()) {
+                  <div class="ajuste-sub">
+                    <span class="nota">Sincronía</span>
+                    <button (click)="ajustarSubtitulo(-0.5)" aria-label="Adelantar los subtítulos">−0,5 s</button>
+                    <b>{{ desfase() > 0 ? '+' : '' }}{{ desfase() }} s</b>
+                    <button (click)="ajustarSubtitulo(0.5)" aria-label="Atrasar los subtítulos">+0,5 s</button>
+                  </div>
+                  <div class="ajuste-sub">
+                    <span class="nota">Tamaño</span>
+                    <button (click)="cambiarTamanoSub(-1)" aria-label="Letra más chica">A−</button>
+                    <button (click)="cambiarTamanoSub(1)" aria-label="Letra más grande">A+</button>
+                  </div>
+                }
+              </div>
+            }
           </div>
         </footer>
       </div>
@@ -116,6 +187,11 @@ export class Reproductor implements AfterViewInit, OnDestroy {
   protected readonly visibles = signal(true);
   protected readonly cercaDelFinal = signal(false);
   protected readonly cuenta = signal<number | null>(null);
+  protected readonly subtitulos = signal<Subtitulo[]>([]);
+  protected readonly subActivo = signal<string | null>(null);
+  protected readonly panelSub = signal(false);
+  protected readonly desfase = signal(0);
+  protected readonly tamanoSub = signal<'chico' | 'medio' | 'grande'>(leerPreferencia(CLAVE_TAMANO_SUB) === 'chico' ? 'chico' : leerPreferencia(CLAVE_TAMANO_SUB) === 'grande' ? 'grande' : 'medio');
 
   protected readonly nombre = computed(() => {
     const p = this.pedido();
@@ -138,6 +214,9 @@ export class Reproductor implements AfterViewInit, OnDestroy {
   private temporizadorGuardado = 0;
   private temporizadorOcultar = 0;
   private temporizadorCuenta = 0;
+  private textoSub = '';
+  private subActual: Subtitulo | null = null;
+  private urlSub: string | null = null;
   private escuchas: [EventTarget, string, EventListener][] = [];
 
   ngAfterViewInit() {
@@ -211,6 +290,7 @@ export class Reproductor implements AfterViewInit, OnDestroy {
     this.cambiando = false;
     this.cercaDelFinal.set(false);
     this.error.set(null);
+    this.cargarSubtitulos(p);
     this.tiempo.set(0);
     this.duracion.set(0);
     this.estado.set('Preparando la fuente…');
@@ -310,7 +390,7 @@ export class Reproductor implements AfterViewInit, OnDestroy {
   protected mostrar() {
     this.visibles.set(true);
     clearTimeout(this.temporizadorOcultar);
-    this.temporizadorOcultar = window.setTimeout(() => this.jugando() && this.visibles.set(false), OCULTAR_CONTROLES_MS);
+    this.temporizadorOcultar = window.setTimeout(() => this.jugando() && !this.panelSub() && this.visibles.set(false), OCULTAR_CONTROLES_MS);
   }
 
   protected reloj(segundos: number) {
@@ -336,6 +416,8 @@ export class Reproductor implements AfterViewInit, OnDestroy {
       ArrowDown: () => this.cambiarVolumen(v.volume - 0.1),
       m: () => this.silenciar(),
       f: () => this.pantallaCompleta(),
+      c: () => this.panelSub.set(!this.panelSub()),
+      Escape: () => this.panelSub.set(false),
     };
     const accion = acciones[e.key];
     if (!accion || (enRango && e.key.startsWith('Arrow'))) return;
@@ -388,6 +470,83 @@ export class Reproductor implements AfterViewInit, OnDestroy {
     });
   }
 
+  // --- subtítulos
+  private cargarSubtitulos(p: Pedido) {
+    this.quitarSubtitulo();
+    this.subtitulos.set([]);
+    this.subActivo.set(null);
+    this.desfase.set(0);
+    const idVideo = p.episodio?.id ?? p.titulo.id;
+    const tipo = p.titulo.tipo === 'series' ? 'series' : 'movie';
+    this.http.get<{ subtitulos: Subtitulo[] }>('/api/mis/subtitulos/' + tipo + '/' + encodeURIComponent(idVideo)).subscribe({
+      next: (r) => {
+        this.subtitulos.set(r.subtitulos);
+        const preferido = leerPreferencia(CLAVE_IDIOMA_SUB);
+        const elegido = preferido && preferido !== 'no' ? r.subtitulos.find((s) => s.lang === preferido) : null;
+        if (elegido) this.elegirSubtitulo(elegido);
+      },
+      error: () => undefined,
+    });
+  }
+
+  protected elegirSubtitulo(s: Subtitulo | null) {
+    this.panelSub.set(false);
+    this.desfase.set(0);
+    this.subActual = s;
+    if (!s) {
+      this.quitarSubtitulo();
+      this.subActivo.set(null);
+      guardarPreferencia(CLAVE_IDIOMA_SUB, 'no');
+      return;
+    }
+    this.subActivo.set(s.id);
+    guardarPreferencia(CLAVE_IDIOMA_SUB, s.lang);
+    this.http.get('/api/mis/subtitulo/' + s.id, { responseType: 'text' }).subscribe({
+      next: (texto) => {
+        this.textoSub = texto;
+        this.mostrarSubtitulo();
+      },
+      error: () => {
+        this.subActivo.set(null);
+        this.subActual = null;
+      },
+    });
+  }
+
+  /** El navegador pide el archivo sin el token, así que se baja con él y se le pasa como Blob. */
+  private mostrarSubtitulo() {
+    const s = this.subActual;
+    if (!s) return;
+    this.quitarSubtitulo();
+    this.urlSub = URL.createObjectURL(new Blob([desplazar(this.textoSub, this.desfase())], { type: 'text/vtt' }));
+    const pista = document.createElement('track');
+    pista.kind = 'subtitles';
+    pista.label = s.idioma;
+    pista.srclang = s.lang;
+    pista.src = this.urlSub;
+    pista.default = true;
+    this.video().nativeElement.appendChild(pista);
+    pista.track.mode = 'showing';
+  }
+
+  private quitarSubtitulo() {
+    this.video().nativeElement.querySelectorAll('track').forEach((t) => t.remove());
+    if (this.urlSub) URL.revokeObjectURL(this.urlSub);
+    this.urlSub = null;
+  }
+
+  protected ajustarSubtitulo(paso: number) {
+    this.desfase.set(Math.round((this.desfase() + paso) * 10) / 10);
+    this.mostrarSubtitulo();
+  }
+
+  protected cambiarTamanoSub(paso: number) {
+    const tamanos = ['chico', 'medio', 'grande'] as const;
+    const nuevo = tamanos[Math.min(2, Math.max(0, tamanos.indexOf(this.tamanoSub()) + paso))];
+    this.tamanoSub.set(nuevo);
+    guardarPreferencia(CLAVE_TAMANO_SUB, nuevo);
+  }
+
   protected salir() {
     history.back();
   }
@@ -398,6 +557,7 @@ export class Reproductor implements AfterViewInit, OnDestroy {
     clearTimeout(this.temporizadorOcultar);
     this.guardar();
     for (const [destino, evento, funcion] of this.escuchas) destino.removeEventListener(evento, funcion);
+    this.quitarSubtitulo();
     this.hls?.destroy();
     const v = this.video().nativeElement;
     v.removeAttribute('src');

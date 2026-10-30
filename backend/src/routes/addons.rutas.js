@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { autenticar } from "../middlewares/autenticar.js";
-import { agregar, buscarFuentes, enlaceDeFuente, filasDeAddons, listar, quitar } from "../services/addons.service.js";
+import { agregar, archivoSubtitulo, buscarFuentes, buscarSubtitulos, enlaceDeFuente, filasDeAddons, listar, quitar } from "../services/addons.service.js";
 
 const router = Router();
 
@@ -21,6 +21,12 @@ router.get("/filas", async (req, res) => {
 });
 router.get("/fuentes/:tipo/:idVideo", async (req, res) => {
   res.json(await buscarFuentes(req.cuentaId, req.params.tipo, req.params.idVideo));
+});
+router.get("/subtitulos/:tipo/:idVideo", async (req, res) => {
+  res.json(await buscarSubtitulos(req.cuentaId, req.params.tipo, req.params.idVideo));
+});
+router.get("/subtitulo/:id", async (req, res) => {
+  res.type("text/vtt").send(await archivoSubtitulo(req.cuentaId, req.params.id));
 });
 router.post("/fuentes/:id/enlace", async (req, res) => {
   res.json(await enlaceDeFuente(req.cuentaId, req.params.id));

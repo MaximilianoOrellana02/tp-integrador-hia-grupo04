@@ -21,7 +21,8 @@ La base de datos no publica puertos hacia afuera. El backend corre las migracion
 
 Cada cuenta carga sus addons en Ajustes, pegando la dirección del `manifest.json`. La app trae un
 addon propio de películas con licencia libre. Las URL se guardan cifradas con `ADDONS_CLAVE`, el
-backend hace los pedidos y bloquea las direcciones de redes privadas. Se reproducen enlaces directos
+backend hace los pedidos y bloquea las direcciones de redes privadas. Los subtítulos salen de OpenSubtitles (incluido, sin clave) y de los addons que los ofrezcan.
+Se reproducen enlaces directos
 o HLS que el navegador pueda abrir; los torrents sin enlace no se ofrecen.
 
 ## Créditos

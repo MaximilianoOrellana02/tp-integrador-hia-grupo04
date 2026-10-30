@@ -905,3 +905,80 @@ select option {
     display: none;
   }
 }
+
+/* Subtítulos */
+.reproductor video::cue {
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 100%;
+}
+
+.reproductor.sub-chico video::cue {
+  font-size: 75%;
+}
+
+.reproductor.sub-grande video::cue {
+  font-size: 140%;
+}
+
+.fila-controles {
+  position: relative;
+}
+
+.fila-controles button.activo {
+  background: #fff;
+  color: #000;
+}
+
+.panel-sub {
+  position: absolute;
+  right: 0;
+  bottom: 52px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: min(100%, 340px);
+  max-height: 55vh;
+  padding: 8px;
+  overflow-y: auto;
+  border-radius: 16px;
+  background: rgba(20, 20, 22, 0.92);
+}
+
+.panel-sub .opcion {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: #fff;
+  text-align: left;
+}
+
+.panel-sub .opcion:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.panel-sub .opcion.elegida {
+  background: #fff;
+  color: #000;
+}
+
+.panel-sub .opcion.elegida .nota {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.ajuste-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 2px;
+  border-top: 1px solid var(--borde);
+}
+
+.ajuste-sub .nota {
+  flex: 1;
+}

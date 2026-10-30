@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Addon, VideoLibre } from "../models/index.js";
 import { ErrorHttp } from "../utils/ErrorHttp.js";
 import { cifrar, descifrar, huella } from "../utils/cifrado.js";
+import { aVtt } from "../utils/subtitulos.js";
 import { leerUrl, pedirJson, pedirSeguro } from "../utils/redSegura.js";
 
 /**
@@ -16,10 +17,12 @@ const ID_VIDEO = /^[\w:.-]{1,60}$/;
 const ADDON_LIBRE = "Películas libres";
 
 const fuentesGuardadas = new Map();
+const subtitulosGuardados = new Map();
 
 function limpiarVencidas() {
   const ahora = Date.now();
   for (const [id, f] of fuentesGuardadas) if (f.vence < ahora) fuentesGuardadas.delete(id);
+  for (const [id, s] of subtitulosGuardados) if (s.vence < ahora) subtitulosGuardados.delete(id);
 }
 
 export function listar(cuentaId) {
@@ -136,7 +139,7 @@ export async function buscarFuentes(cuentaId, tipo, idVideo) {
     addons.map(async (addon) => {
       try {
         if (!ofrece(await manifestDe(addon), "stream")) return [];
-        const datos = await pedirJson(baseDe(addon) + "/stream/" + tipo + "/" + encodeURIComponent(idVideo) + ".json", { soloHttps: true, maxBytes: 5_000_000 });
+        const datos = await pedirJson(baseDe(addon) + "/stream/" + tipo + "/" + idVideo + ".json", { soloHttps: true, maxBytes: 5_000_000 });
         const { fuentes, sinEnlace } = convertirStreams(cuentaId, addon.nombre, Array.isArray(datos?.streams) ? datos.streams : []);
         if (sinEnlace) avisos.push(addon.nombre + ": " + sinEnlace + " fuentes sin enlace directo (torrents)");
         return fuentes;
@@ -202,4 +205,81 @@ export async function filasDeAddons(cuentaId) {
     }),
   );
   return porAddon.flat().filter((f) => f?.items.length);
+}
+
+// --- Subtítulos
+// OpenSubtitles es público y no pide clave: viene incluido, como las películas libres
+const OPENSUBTITLES = "https://opensubtitles-v3.strem.io";
+const SUBTITULOS_POR_IDIOMA = 4;
+const IDIOMAS = {
+  spa: "Español", eng: "Inglés", pob: "Portugués (Brasil)", por: "Portugués", fre: "Francés", ger: "Alemán",
+  ita: "Italiano", cat: "Catalán", baq: "Vasco", glg: "Gallego", rus: "Ruso", pol: "Polaco", ell: "Griego",
+  tur: "Turco", ara: "Árabe", heb: "Hebreo", jpn: "Japonés", kor: "Coreano", zho: "Chino", chi: "Chino",
+  hin: "Hindi", nld: "Neerlandés", swe: "Sueco", dan: "Danés", nor: "Noruego", fin: "Finés", ron: "Rumano",
+  hun: "Húngaro", cze: "Checo", slo: "Eslovaco", bul: "Búlgaro", ukr: "Ucraniano", hrv: "Croata", srp: "Serbio",
+  per: "Persa", tha: "Tailandés", ind: "Indonesio",
+};
+const PRIMEROS = ["spa", "eng", "pob"];
+
+const nombreIdioma = (codigo) => IDIOMAS[codigo] ?? codigo.toUpperCase();
+
+/** Los subtítulos de OpenSubtitles y de los addons de la cuenta que los ofrezcan. */
+export async function buscarSubtitulos(cuentaId, tipo, idVideo) {
+  if (tipo !== "movie" && tipo !== "series") throw new ErrorHttp(400, "Tipo no válido");
+  if (!ID_VIDEO.test(idVideo)) throw new ErrorHttp(400, "ID de video no válido");
+  limpiarVencidas();
+
+  const addons = await Addon.findAll({ where: { cuentaId } });
+  const propios = await Promise.all(
+    addons.map(async (addon) => {
+      try {
+        return ofrece(await manifestDe(addon), "subtitles") ? { nombre: addon.nombre, base: baseDe(addon) } : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  const origenes = [{ nombre: "OpenSubtitles", base: OPENSUBTITLES }, ...propios.filter(Boolean)];
+
+  const todos = (
+    await Promise.all(
+      origenes.map(async (origen) => {
+        try {
+          const datos = await pedirJson(origen.base + "/subtitles/" + tipo + "/" + idVideo + ".json", { soloHttps: true, maxBytes: 5_000_000 });
+          return (Array.isArray(datos?.subtitles) ? datos.subtitles : [])
+            .filter((s) => typeof s?.url === "string" && /^https?:\/\//i.test(s.url) && /^[a-z]{2,3}$/i.test(s.lang ?? ""))
+            .map((s) => ({ origen: origen.nombre, url: s.url, lang: s.lang.toLowerCase(), archivo: String(s.subtitleFileName ?? "").slice(0, 90) }));
+        } catch {
+          return [];
+        }
+      }),
+    )
+  ).flat();
+
+  const porIdioma = new Map();
+  for (const s of todos) {
+    const lista = porIdioma.get(s.lang) ?? [];
+    if (lista.length < SUBTITULOS_POR_IDIOMA) lista.push(s);
+    porIdioma.set(s.lang, lista);
+  }
+  const orden = (lang) => (PRIMEROS.includes(lang) ? PRIMEROS.indexOf(lang) : PRIMEROS.length);
+  const idiomas = [...porIdioma.keys()].sort((a, b) => orden(a) - orden(b) || nombreIdioma(a).localeCompare(nombreIdioma(b), "es"));
+
+  const subtitulos = idiomas.flatMap((lang) =>
+    porIdioma.get(lang).map((s) => {
+      const id = randomUUID();
+      subtitulosGuardados.set(id, { cuentaId, url: s.url, vence: Date.now() + VIGENCIA_FUENTE_MS });
+      return { id, lang, idioma: nombreIdioma(lang), addon: s.origen, detalle: s.archivo };
+    }),
+  );
+  return { subtitulos };
+}
+
+/** El archivo, en WebVTT. El navegador nunca ve la dirección original. */
+export async function archivoSubtitulo(cuentaId, id) {
+  const s = subtitulosGuardados.get(id);
+  if (!s || s.cuentaId !== cuentaId || s.vence < Date.now()) throw new ErrorHttp(404, "El subtítulo venció: buscá de nuevo");
+  const r = await pedirSeguro(s.url, { maxBytes: 1_500_000, esperaMs: 20000 });
+  if (r.estado !== 200 || !r.cuerpo) throw new ErrorHttp(502, "No se pudo bajar el subtítulo");
+  return aVtt(r.cuerpo);
 }
