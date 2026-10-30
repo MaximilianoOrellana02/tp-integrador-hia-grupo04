@@ -1187,3 +1187,133 @@ button.avatar-chico {
 .sugeridos {
   margin: 36px -16px 0;
 }
+
+/* Ficha: botón principal, elenco, tráiler */
+.pista.interna {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.secundario.chico {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.miniatura {
+  position: relative;
+  overflow: hidden;
+}
+
+.actor {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 110px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.actor img,
+.actor .inicial {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.actor .inicial {
+  font-size: 36px;
+}
+
+.actor b {
+  font-size: 13px;
+}
+
+.actor .nota {
+  font-size: 12px;
+}
+
+.cortina-trailer {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.82);
+}
+
+.marco-trailer {
+  position: relative;
+  width: min(100%, 960px);
+  aspect-ratio: 16 / 9;
+}
+
+.marco-trailer iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 14px;
+  background: #000;
+}
+
+.cerrar {
+  position: absolute;
+  top: -44px;
+  right: 0;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+/* Actor */
+.persona-cabecera {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.persona-foto {
+  flex: none;
+  width: 180px;
+  border-radius: 16px;
+}
+
+.biografia {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-height: 1.5;
+}
+
+.biografia.abierta {
+  display: block;
+}
+
+.obra {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-decoration: none;
+}
+
+.obra .poster {
+  width: auto;
+}
+
+@media (max-width: 640px) {
+  .persona-cabecera {
+    flex-direction: column;
+  }
+
+  .persona-foto {
+    width: 120px;
+  }
+}

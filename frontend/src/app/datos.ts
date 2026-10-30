@@ -78,6 +78,17 @@ export class Reproduccion {
   readonly pedido = signal<Pedido | null>(null);
 }
 
+/** Se puede continuar: vio más de 1 minuto y no terminó. */
+export function sePuedeContinuar(p: Progreso) {
+  return p.posicionMs >= 60000 && !terminado(p);
+}
+
+/** «quedan 55 min» o «quedan 1 h 5 min». */
+export function quedan(p: Progreso): string {
+  const min = Math.max(1, Math.round((p.duracionMs - p.posicionMs) / 60000));
+  return 'quedan ' + (min >= 60 ? Math.floor(min / 60) + ' h' + (min % 60 ? ' ' + (min % 60) + ' min' : '') : min + ' min');
+}
+
 /** Terminado: pasó el 95 % o quedan menos de 2 minutos, como en el resto de MaxFlix. */
 export function terminado(p: Progreso) {
   return p.duracionMs > 0 && (p.posicionMs / p.duracionMs >= 0.95 || p.duracionMs - p.posicionMs <= 120000);

@@ -7,6 +7,7 @@ export const routes: Routes = [
   { path: 'buscar', canActivate: [conSesion], loadComponent: () => import('./buscar').then((m) => m.Buscar) },
   { path: 'ajustes', canActivate: [conSesion], loadComponent: () => import('./ajustes').then((m) => m.Ajustes) },
   { path: 'titulo/:tipo/:id', canActivate: [conSesion], loadComponent: () => import('./ficha').then((m) => m.Ficha) },
+  { path: 'persona/:id', canActivate: [conSesion], loadComponent: () => import('./persona').then((m) => m.Persona) },
   { path: 'reproducir', canActivate: [conSesion], loadComponent: () => import('./reproductor').then((m) => m.Reproductor) },
   { path: 'peliculas', canActivate: [conSesion], data: { seccion: 'peliculas' }, loadComponent: () => import('./explorar').then((m) => m.Explorar) },
   { path: 'series', canActivate: [conSesion], data: { seccion: 'series' }, loadComponent: () => import('./explorar').then((m) => m.Explorar) },
