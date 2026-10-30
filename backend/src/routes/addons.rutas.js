@@ -20,7 +20,7 @@ router.get("/filas", async (req, res) => {
   res.json({ filas: await filasDeAddons(req.cuentaId) });
 });
 router.get("/fuentes/:tipo/:idVideo", async (req, res) => {
-  res.json(await buscarFuentes(req.cuentaId, req.params.tipo, req.params.idVideo));
+  res.json(await buscarFuentes(req.cuentaId, req.params.tipo, req.params.idVideo, req.query.perfilId));
 });
 router.get("/subtitulos/:tipo/:idVideo", async (req, res) => {
   res.json(await buscarSubtitulos(req.cuentaId, req.params.tipo, req.params.idVideo));

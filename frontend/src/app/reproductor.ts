@@ -2,7 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { AfterViewInit, Component, computed, ElementRef, HostListener, inject, OnDestroy, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import type Hls from 'hls.js';
-import { Fuente, Pedido, Reproduccion } from './datos';
+import { elegirCandidatas, Episodio, Fuente, Pedido, Reproduccion } from './datos';
 import { Sesion } from './sesion';
 
 const GUARDAR_CADA_MS = 15000;
@@ -11,6 +11,10 @@ const AVISO_SIGUIENTE_S = 30;
 const CUENTA_SIGUIENTE_S = 8;
 const VELOCIDADES = [0.75, 1, 1.25, 1.5, 2];
 const CLAVE_VOLUMEN = 'maxflix.volumen';
+const ESPERA_ARRANQUE_MS = 60000;
+// Menos que esto es el video de aviso de un servicio («no está disponible»), no el contenido
+const DURACION_MINIMA_S = 180;
+const ADDON_LIBRE = 'Películas libres';
 const CLAVE_IDIOMA_SUB = 'maxflix.subtitulos';
 const CLAVE_TAMANO_SUB = 'maxflix.tamanoSub';
 
@@ -130,9 +134,26 @@ function desplazar(vtt: string, segundos: number): string {
               [style.--lleno]="(silencio() ? 0 : volumen() * 100) + '%'"
               (input)="cambiarVolumen(+$any($event.target).value)"
             />
+            @if (pedido()?.episodio) {
+              <button (click)="abrirEpisodios()" [class.activo]="panelEp()" aria-label="Episodios">Episodios</button>
+            }
             <button (click)="panelSub.set(!panelSub())" [class.activo]="subActivo()" aria-label="Subtítulos">CC</button>
             <button (click)="cambiarVelocidad()" aria-label="Velocidad">{{ velocidad() }}×</button>
             <button (click)="pantallaCompleta()" [attr.aria-label]="completa() ? 'Salir de pantalla completa' : 'Pantalla completa'">{{ completa() ? '⤡' : '⛶' }}</button>
+            @if (panelEp()) {
+              <div class="panel-sub vidrio" role="menu" aria-label="Episodios">
+                <select aria-label="Temporada" (change)="temporadaPanel.set(+$any($event.target).value)">
+                  @for (t of temporadasPanel(); track t) {
+                    <option [value]="t" [selected]="t === temporadaPanel()">{{ t === 0 ? 'Especiales' : 'Temporada ' + t }}</option>
+                  }
+                </select>
+                @for (e of episodiosPanel(); track e.id) {
+                  <button class="opcion" [class.elegida]="e.id === pedido()?.episodio?.id" (click)="irAEpisodio(e)">
+                    <b>{{ e.numero }}. {{ e.nombre }}</b>
+                  </button>
+                }
+              </div>
+            }
             @if (panelSub()) {
               <div class="panel-sub vidrio" role="menu" aria-label="Subtítulos">
                 <button class="opcion" [class.elegida]="!subActivo()" (click)="elegirSubtitulo(null)">Desactivados</button>
@@ -191,6 +212,10 @@ export class Reproductor implements AfterViewInit, OnDestroy {
   protected readonly subActivo = signal<string | null>(null);
   protected readonly panelSub = signal(false);
   protected readonly desfase = signal(0);
+  protected readonly panelEp = signal(false);
+  protected readonly temporadaPanel = signal(1);
+  protected readonly temporadasPanel = computed(() => [...new Set((this.pedido()?.episodios ?? []).map((e) => e.temporada))]);
+  protected readonly episodiosPanel = computed(() => (this.pedido()?.episodios ?? []).filter((e) => e.temporada === this.temporadaPanel()));
   protected readonly tamanoSub = signal<'chico' | 'medio' | 'grande'>(leerPreferencia(CLAVE_TAMANO_SUB) === 'chico' ? 'chico' : leerPreferencia(CLAVE_TAMANO_SUB) === 'grande' ? 'grande' : 'medio');
 
   protected readonly nombre = computed(() => {
@@ -215,6 +240,10 @@ export class Reproductor implements AfterViewInit, OnDestroy {
   private temporizadorOcultar = 0;
   private temporizadorCuenta = 0;
   private textoSub = '';
+  private esperaArranque = 0;
+  private intento = 1;
+  private totalIntentos = 1;
+  private ultimaFalla = 0;
   private subActual: Subtitulo | null = null;
   private urlSub: string | null = null;
   private escuchas: [EventTarget, string, EventListener][] = [];
@@ -236,6 +265,10 @@ export class Reproductor implements AfterViewInit, OnDestroy {
 
     this.escuchar(v, 'loadedmetadata', () => {
       this.duracion.set(v.duration);
+      if (v.duration < DURACION_MINIMA_S && this.pedido()?.fuente.addon !== ADDON_LIBRE) {
+        this.falla('Esta fuente es un video de aviso, no el contenido.');
+        return;
+      }
       const inicio = this.pedido()?.posicionMs ?? 0;
       if (inicio > 0) v.currentTime = inicio / 1000;
     });
@@ -246,6 +279,7 @@ export class Reproductor implements AfterViewInit, OnDestroy {
       this.cercaDelFinal.set(v.duration > 120 && falta <= AVISO_SIGUIENTE_S);
     });
     this.escuchar(v, 'playing', () => {
+      clearTimeout(this.esperaArranque);
       this.empezo = true;
       this.estado.set(null);
       this.jugando.set(true);
@@ -281,7 +315,11 @@ export class Reproductor implements AfterViewInit, OnDestroy {
     this.escuchas.push([destino, evento, funcion]);
   }
 
-  private empezar(p: Pedido) {
+  private empezar(p: Pedido, reiniciarIntentos = true) {
+    if (reiniciarIntentos) {
+      this.intento = 1;
+      this.totalIntentos = 1 + p.alternativas.length;
+    }
     this.pedido.set(p);
     this.reproduccion.pedido.set(p);
     this.hls?.destroy();
@@ -294,6 +332,8 @@ export class Reproductor implements AfterViewInit, OnDestroy {
     this.tiempo.set(0);
     this.duracion.set(0);
     this.estado.set('Preparando la fuente…');
+    clearTimeout(this.esperaArranque);
+    this.esperaArranque = window.setTimeout(() => !this.empezo && this.falla('La fuente tardó demasiado en arrancar.'), ESPERA_ARRANQUE_MS);
     const v = this.video().nativeElement;
     v.removeAttribute('src');
     v.load();
@@ -320,9 +360,23 @@ export class Reproductor implements AfterViewInit, OnDestroy {
     v.play().catch(() => this.estado.set('Tocá ▶ para reproducir.'));
   }
 
+  /** Con «Reproducir» pasa a la siguiente fuente, donde estaba; elegida a mano, avisa y listo. */
   private falla(texto: string) {
+    const p = this.pedido();
+    if (Date.now() - this.ultimaFalla < 1500) return;
+    this.ultimaFalla = Date.now();
+    clearTimeout(this.esperaArranque);
+    if (p?.automatico && p.alternativas.length) {
+      const [siguiente, ...resto] = p.alternativas;
+      const v = this.video().nativeElement;
+      const posicionMs = this.empezo && v.currentTime > 0 ? Math.round(v.currentTime * 1000) : p.posicionMs;
+      this.intento++;
+      this.empezar({ ...p, fuente: siguiente, alternativas: resto, posicionMs }, false);
+      this.estado.set('La fuente anterior no funcionó. Probando otra (' + this.intento + ' de ' + this.totalIntentos + ')…');
+      return;
+    }
     this.estado.set(null);
-    this.error.set(texto);
+    this.error.set(this.totalIntentos > 1 ? 'Ninguna de las ' + this.totalIntentos + ' fuentes funcionó.' : texto);
   }
 
   private guardar(terminado = false) {
@@ -441,27 +495,37 @@ export class Reproductor implements AfterViewInit, OnDestroy {
     this.cuenta.set(null);
   }
 
-  /** Busca las fuentes del que sigue: la del mismo addon si es compatible; si no, la primera compatible. */
+  protected abrirEpisodios() {
+    const actual = this.pedido()?.episodio;
+    if (actual && !this.panelEp()) this.temporadaPanel.set(actual.temporada);
+    this.panelEp.set(!this.panelEp());
+    this.panelSub.set(false);
+  }
+
   protected pasarAlSiguiente() {
     const sig = this.siguiente();
+    if (sig) this.irAEpisodio(sig);
+  }
+
+  /** Busca las fuentes del episodio con las preferencias del perfil y arranca la mejor. */
+  protected irAEpisodio(ep: Episodio) {
     const p = this.pedido();
-    if (!sig || !p || this.cambiando) return;
+    if (!p || this.cambiando) return;
     this.cambiando = true;
     this.cancelarCuenta();
-    this.guardar(true);
-    this.estado.set('Buscando las fuentes del siguiente episodio…');
-    this.http.get<{ fuentes: Fuente[] }>('/api/mis/fuentes/series/' + encodeURIComponent(sig.id)).subscribe({
+    this.panelEp.set(false);
+    this.guardar(ep.id === p.episodio?.id);
+    this.estado.set('Buscando las fuentes del episodio…');
+    const perfil = this.sesion.perfil();
+    this.http.get<{ fuentes: Fuente[] }>('/api/mis/fuentes/series/' + encodeURIComponent(ep.id) + (perfil ? '?perfilId=' + perfil.id : '')).subscribe({
       next: (r) => {
-        const elegida =
-          r.fuentes.find((f) => f.addon === p.fuente.addon && f.nivel === 'compatible') ??
-          r.fuentes.find((f) => f.nivel === 'compatible') ??
-          r.fuentes.find((f) => f.nivel === 'desconocida');
-        if (!elegida) {
+        const [primera, ...resto] = elegirCandidatas(r.fuentes);
+        if (!primera) {
           this.cambiando = false;
-          this.falla('No hay una fuente compatible para el siguiente episodio.');
+          this.falla('No hay una fuente que ande en el navegador para ese episodio.');
           return;
         }
-        this.empezar({ ...p, episodio: sig, fuente: elegida, posicionMs: 0 });
+        this.empezar({ ...p, episodio: ep, fuente: primera, alternativas: resto, automatico: true, posicionMs: 0 });
       },
       error: (e: HttpErrorResponse) => {
         this.cambiando = false;
@@ -553,6 +617,7 @@ export class Reproductor implements AfterViewInit, OnDestroy {
 
   ngOnDestroy() {
     clearInterval(this.temporizadorGuardado);
+    clearTimeout(this.esperaArranque);
     clearInterval(this.temporizadorCuenta);
     clearTimeout(this.temporizadorOcultar);
     this.guardar();

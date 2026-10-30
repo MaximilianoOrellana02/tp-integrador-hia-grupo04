@@ -1438,3 +1438,56 @@ select option {
     scroll-behavior: auto !important;
   }
 }
+
+/* Lista de fuentes con detalle */
+.fuente {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.calidad-caja {
+  display: grid;
+  flex: none;
+  place-items: center;
+  min-width: 64px;
+  padding: 10px 6px;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 10px;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.fuente-cuerpo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fuente-etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip-mejor {
+  border-color: #fff;
+  background: #fff;
+  color: var(--fondo);
+}
+
+.detalle-fuente {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+.episodio:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}

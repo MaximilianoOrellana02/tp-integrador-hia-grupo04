@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { Addon, VideoLibre } from "../models/index.js";
+import { Addon, Perfil, VideoLibre } from "../models/index.js";
 import { ErrorHttp } from "../utils/ErrorHttp.js";
 import { cifrar, descifrar, huella } from "../utils/cifrado.js";
+import { analizar, ordenar } from "../utils/analizarFuentes.js";
 import { aVtt } from "../utils/subtitulos.js";
 import { leerUrl, pedirJson, pedirSeguro } from "../utils/redSegura.js";
 
@@ -86,7 +87,6 @@ export function compatibilidad(texto, url) {
   return { nivel: "desconocida", motivo: "Sin datos del formato" };
 }
 
-const ORDEN = { compatible: 0, desconocida: 1, dudosa: 2, no: 3 };
 
 function guardarFuente(cuentaId, url, directa) {
   const id = randomUUID();
@@ -104,6 +104,8 @@ async function fuentesLibres(cuentaId, idVideo) {
     detalle: video.autor + " · " + video.licencia,
     nivel: "compatible",
     motivo: null,
+    ...analizar("720p"),
+    idiomas: ["original"],
   }];
 }
 
@@ -123,12 +125,21 @@ function convertirStreams(cuentaId, nombreAddon, streams) {
       nombre,
       detalle,
       ...compatibilidad(nombre + " " + detalle + " " + (s.behaviorHints?.filename ?? ""), s.url),
+      ...analizar(nombre + " " + detalle + " " + (s.behaviorHints?.filename ?? "")),
     });
   }
   return { fuentes, sinEnlace };
 }
 
-export async function buscarFuentes(cuentaId, tipo, idVideo) {
+/** Las preferencias del perfil (si es de esta cuenta); si no, las de siempre. */
+async function preferenciasDe(cuentaId, perfilId) {
+  const id = Number(perfilId);
+  if (!Number.isInteger(id)) return {};
+  const perfil = await Perfil.findOne({ where: { id, cuentaId }, attributes: ["idiomasAudio", "calidadMaxima"] });
+  return perfil ? { idiomasAudio: perfil.idiomasAudio, calidadMaxima: perfil.calidadMaxima } : {};
+}
+
+export async function buscarFuentes(cuentaId, tipo, idVideo, perfilId) {
   if (tipo !== "movie" && tipo !== "series") throw new ErrorHttp(400, "Tipo no válido");
   if (!ID_VIDEO.test(idVideo)) throw new ErrorHttp(400, "ID de video no válido");
   limpiarVencidas();
@@ -149,7 +160,7 @@ export async function buscarFuentes(cuentaId, tipo, idVideo) {
       }
     }),
   );
-  const fuentes = [...(await fuentesLibres(cuentaId, idVideo)), ...resultados.flat()].sort((a, b) => ORDEN[a.nivel] - ORDEN[b.nivel]);
+  const fuentes = ordenar([...(await fuentesLibres(cuentaId, idVideo)), ...resultados.flat()], await preferenciasDe(cuentaId, perfilId));
   return { fuentes, avisos };
 }
 

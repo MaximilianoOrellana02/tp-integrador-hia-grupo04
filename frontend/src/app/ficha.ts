@@ -3,7 +3,7 @@ import { Component, computed, effect, HostListener, inject, signal } from '@angu
 import { DomSanitizer } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Barra } from './barra';
-import { Copia, Episodio, Fuente, Progreso, quedan, Reproduccion, sePuedeContinuar, terminado, Titulo } from './datos';
+import { Copia, elegirCandidatas, Episodio, Fuente, Progreso, quedan, Reproduccion, sePuedeContinuar, terminado, Titulo } from './datos';
 import { Sesion } from './sesion';
 
 interface Video {
@@ -83,12 +83,13 @@ const etiquetaDe = (v: Video) => 'T' + v.season + ' E' + numeroDe(v);
           }
           <div class="botones">
             @if (accion(); as a) {
-              <button class="principal" (click)="buscar(a.video, a.posicionMs)">
+              <button class="principal" [disabled]="buscando()" (click)="reproducirSola(a.video, a.posicionMs)">
                 ▶ {{ a.texto }}@if (a.detalle) {<span class="detalle-boton"> · {{ a.detalle }}</span>}
               </button>
               @if (a.posicionMs > 0) {
-                <button class="secundario" (click)="buscar(a.video, 0)">↺ Desde el inicio</button>
+                <button class="secundario" [disabled]="buscando()" (click)="reproducirSola(a.video, 0)">↺ Desde el inicio</button>
               }
+              <button class="secundario" [disabled]="buscando()" (click)="buscar(a.video, a.posicionMs)">Elegir fuente</button>
             } @else if (esSerie) {
               <button class="principal" disabled>Cargando…</button>
             }
@@ -119,7 +120,7 @@ const etiquetaDe = (v: Video) => 'T' + v.season + ' E' + numeroDe(v);
           </div>
           <div class="episodios">
             @for (v of episodios(); track v.id) {
-              <button class="episodio" (click)="buscar(v)">
+              <button class="episodio" [disabled]="buscando()" (click)="reproducirSola(v)">
                 <div class="miniatura" [style.background-image]="v.thumbnail ? 'url(&quot;' + v.thumbnail + '&quot;)' : 'none'">
                   @if (progresoDe(v); as p) {
                     <div class="barra-avance"><div [style.width.%]="porcentaje(p)"></div></div>
@@ -134,7 +135,7 @@ const etiquetaDe = (v: Video) => 'T' + v.season + ' E' + numeroDe(v);
       }
 
       @if (buscando()) {
-        <p class="nota">Buscando fuentes…</p>
+        <p class="nota">Buscando la mejor fuente…</p>
       }
       @if (aviso(); as texto) {
         <p class="aviso">{{ texto }}</p>
@@ -150,13 +151,37 @@ const etiquetaDe = (v: Video) => 'T' + v.season + ' E' + numeroDe(v);
           }
           <div class="fuentes">
             @for (f of fuentes(); track f.id; let primera = $first) {
-              <button class="fuente" [class.apagada]="f.nivel === 'no'" [class.mejor]="primera && f.nivel === 'compatible'" (click)="reproducir(f)">
-                <span class="chip" [attr.data-nivel]="f.nivel">{{ nombreNivel[f.nivel] }}</span>
-                <b>{{ f.nombre }}</b>
-                <span class="nota">{{ f.addon }} · {{ f.detalle }}</span>
-                @if (f.motivo) {
-                  <span class="motivo">{{ f.motivo }}</span>
-                }
+              <button class="fuente" [class.apagada]="f.nivel === 'no'" [class.mejor]="f.recomendada" (click)="reproducir(f)">
+                <span class="calidad-caja">{{ f.calidad ?? '—' }}</span>
+                <span class="fuente-cuerpo">
+                  <span class="fuente-etiquetas">
+                    @if (f.recomendada) {
+                      <span class="chip chip-mejor">★ Mejor opción</span>
+                    }
+                    <span class="chip" [attr.data-nivel]="f.nivel">{{ nombreNivel[f.nivel] }}</span>
+                    @for (i of f.idiomas; track i) {
+                      <span class="chip">{{ nombreIdioma[i] }}</span>
+                    }
+                    @if (f.cache === true) {
+                      <span class="chip" data-nivel="compatible">⚡ Al instante</span>
+                    } @else if (f.cache === false) {
+                      <span class="chip" data-nivel="dudosa">⏳ Sin caché</span>
+                    }
+                    @if (f.codec) {
+                      <span class="chip">{{ f.codec }}</span>
+                    }
+                    @if (f.hdr) {
+                      <span class="chip">HDR</span>
+                    }
+                    @if (f.tamano) {
+                      <span class="chip">{{ f.tamano }}</span>
+                    }
+                  </span>
+                  <span class="nota detalle-fuente">{{ f.addon }} · {{ f.detalle || f.nombre }}</span>
+                  @if (f.motivo) {
+                    <span class="motivo">{{ f.motivo }}</span>
+                  }
+                </span>
               </button>
             }
           </div>
@@ -236,6 +261,7 @@ export class Ficha {
   protected readonly buscada = signal(false);
   protected readonly aviso = signal<string | null>(null);
   protected readonly nombreNivel = { compatible: 'Compatible', desconocida: 'Sin datos', dudosa: 'Puede fallar', no: 'No compatible' };
+  protected readonly nombreIdioma: Record<string, string> = { latino: 'Latino', castellano: 'Castellano', original: 'Inglés' };
   private elegido: Episodio | null = null;
   private posicionElegida = 0;
   private temporadaFijada = false;
@@ -375,22 +401,20 @@ export class Ficha {
     pedido.subscribe({ error: () => this.enLista.set(antes) });
   }
 
-  /** Busca las fuentes del título o del episodio y las muestra abajo. `posicionMs`: desde dónde seguir. */
-  protected buscar(video: Video | null, posicionMs?: number) {
+  private prepararEleccion(video: Video | null, posicionMs?: number) {
     this.elegido = video ? { id: video.id, temporada: video.season, numero: numeroDe(video), nombre: video.name ?? video.title, miniatura: video.thumbnail ?? null } : null;
     const p = video ? this.progresoDe(video) : this.progresos().find((x) => x.idVideo === this.id);
     this.posicionElegida = posicionMs ?? (p && sePuedeContinuar(p) ? p.posicionMs : 0);
     this.buscando.set(true);
     this.buscada.set(false);
     this.aviso.set(null);
-    this.http.get<{ fuentes: Fuente[]; avisos: string[] }>('/api/mis/fuentes/' + this.tipo + '/' + (video?.id ?? this.id)).subscribe({
-      next: (r) => {
-        this.fuentes.set(r.fuentes);
-        this.avisos.set(r.avisos);
-        this.buscando.set(false);
-        this.buscada.set(true);
-        setTimeout(() => document.getElementById('fuentes')?.scrollIntoView({ behavior: 'smooth' }));
-      },
+  }
+
+  private pedirFuentes(video: Video | null, alTerminar: (fuentes: Fuente[], avisos: string[]) => void) {
+    const perfil = this.sesion.perfil();
+    const consulta = perfil ? '?perfilId=' + perfil.id : '';
+    this.http.get<{ fuentes: Fuente[]; avisos: string[] }>('/api/mis/fuentes/' + this.tipo + '/' + (video?.id ?? this.id) + consulta).subscribe({
+      next: (r) => alTerminar(r.fuentes, r.avisos),
       error: (e: HttpErrorResponse) => {
         this.aviso.set(e.error?.error ?? 'No se pudieron buscar las fuentes.');
         this.buscando.set(false);
@@ -398,12 +422,47 @@ export class Ficha {
     });
   }
 
+  private mostrarFuentes(fuentes: Fuente[], avisos: string[]) {
+    this.fuentes.set(fuentes);
+    this.avisos.set(avisos);
+    this.buscando.set(false);
+    this.buscada.set(true);
+    setTimeout(() => document.getElementById('fuentes')?.scrollIntoView({ behavior: 'smooth' }));
+  }
+
+  /** «Elegir fuente»: busca y muestra la lista para elegir una a mano. */
+  protected buscar(video: Video | null, posicionMs?: number) {
+    this.prepararEleccion(video, posicionMs);
+    this.pedirFuentes(video, (fuentes, avisos) => this.mostrarFuentes(fuentes, avisos));
+  }
+
+  /** «Reproducir»: busca, toma la mejor y deja hasta 4 más para probar si falla. */
+  protected reproducirSola(video: Video | null, posicionMs?: number) {
+    this.prepararEleccion(video, posicionMs);
+    this.pedirFuentes(video, (fuentes, avisos) => {
+      const [primera, ...resto] = elegirCandidatas(fuentes);
+      if (!primera) {
+        this.aviso.set('Ninguna fuente puede abrirse en el navegador. Elegí una a mano o cargá otro addon en Ajustes.');
+        this.mostrarFuentes(fuentes, avisos);
+        return;
+      }
+      this.irAlReproductor(primera, resto, true);
+    });
+  }
+
   protected reproducir(fuente: Fuente) {
+    this.irAlReproductor(fuente, [], false);
+  }
+
+  private irAlReproductor(fuente: Fuente, alternativas: Fuente[], automatico: boolean) {
+    this.buscando.set(false);
     this.reproduccion.pedido.set({
       titulo: this.copia(),
       episodio: this.elegido,
       episodios: this.ordenados().map((v) => ({ id: v.id, temporada: v.season, numero: numeroDe(v), nombre: v.name ?? v.title, miniatura: v.thumbnail ?? null })),
       fuente,
+      alternativas,
+      automatico,
       posicionMs: this.posicionElegida,
     });
     this.router.navigateByUrl('/reproducir');

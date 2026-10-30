@@ -61,6 +61,23 @@ export interface Fuente {
   detalle: string;
   nivel: 'compatible' | 'desconocida' | 'dudosa' | 'no';
   motivo: string | null;
+  calidad: string | null;
+  idiomas: string[];
+  cache: boolean | null;
+  codec: string | null;
+  hdr: boolean;
+  tamano: string | null;
+  recomendada?: boolean;
+}
+
+const MAXIMO_INTENTOS = 5;
+
+/**
+ * Las fuentes que «Reproducir» prueba solas, en el orden que dejó el backend: sin las que el
+ * navegador no abre y sin las que todavía no están listas en el servicio de descargas.
+ */
+export function elegirCandidatas(fuentes: Fuente[]): Fuente[] {
+  return fuentes.filter((f) => f.nivel !== 'no' && f.cache !== false).slice(0, MAXIMO_INTENTOS);
 }
 
 export interface Pedido {
@@ -69,6 +86,10 @@ export interface Pedido {
   /** Todos los episodios de la serie, en orden (vacío en películas): de acá sale el siguiente. */
   episodios: Episodio[];
   fuente: Fuente;
+  /** Las que se prueban solas, en orden, si la fuente falla. */
+  alternativas: Fuente[];
+  /** Elegida por «Reproducir»: si falla, pasa a la siguiente. Elegida a mano: no. */
+  automatico: boolean;
   posicionMs: number;
 }
 
