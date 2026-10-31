@@ -10,7 +10,8 @@ Addon.init(
     cuentaId: { type: DataTypes.INTEGER, allowNull: false },
     nombre: { type: DataTypes.STRING(120), allowNull: false },
     urlCifrada: { type: DataTypes.TEXT, allowNull: false },
-    huella: { type: DataTypes.STRING(64), allowNull: false }
+    huella: { type: DataTypes.STRING(64), allowNull: false },
+    enInicio: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true }
   },
   {
     sequelize,

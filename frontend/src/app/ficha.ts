@@ -3,6 +3,8 @@ import { Component, computed, effect, HostListener, inject, signal } from '@angu
 import { DomSanitizer } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Barra } from './barra';
+import { Icono } from './iconos';
+import { Carrusel } from './piezas';
 import { Copia, elegirCandidatas, Episodio, Fuente, Progreso, quedan, Reproduccion, sePuedeContinuar, terminado, Titulo } from './datos';
 import { Sesion } from './sesion';
 
@@ -28,6 +30,8 @@ interface Meta {
   imdbRating?: string;
   genres?: string[];
   director?: string[];
+  writer?: string[];
+  cast?: string[];
   trailers?: { source?: string; type?: string }[];
   videos?: Video[];
 }
@@ -56,53 +60,76 @@ const etiquetaDe = (v: Video) => 'T' + v.season + ' E' + numeroDe(v);
 /** La ficha: datos, botón principal inteligente, tráiler, episodios con avance, fuentes, elenco y parecidos. */
 @Component({
   selector: 'app-ficha',
-  imports: [Barra, RouterLink],
+  imports: [Barra, RouterLink, Carrusel, Icono],
   template: `
-    <app-barra />
-    <section class="ficha-heroe" [style.background-image]="fondo()">
-      <div class="ficha-contenido">
-        @if (copia().poster; as poster) {
-          <img class="ficha-poster" [src]="poster" alt="" />
-        }
-        <div class="ficha-datos">
-          <button class="enlace volver" (click)="volver()">‹ Volver</button>
+    <app-barra [atras]="true" />
+    <section class="ficha-pantalla" [style.background-image]="fondo()">
+      <div class="ficha-pie">
+        <div class="ficha-izquierda">
+          <span class="etiqueta">{{ esSerie ? 'Serie' : 'Película' }}</span>
           @if (logo(); as l) {
-            <img class="logo-titulo" [src]="l" [alt]="copia().nombre" />
+            <img class="logo-ficha" [src]="l" [alt]="copia().nombre" />
           } @else {
-            <h1>{{ copia().nombre }}</h1>
+            <h1 class="titulo-ficha">{{ copia().nombre }}</h1>
           }
-          <p class="nota">{{ datos() }}</p>
-          <div class="chips">
-            @for (g of copia().generos?.slice(0, 4); track g) {
-              <span class="chip">{{ g }}</span>
+          <p class="linea-meta">
+            @for (d of lineaMeta(); track d) {
+              <span>{{ d }}</span>
             }
-          </div>
-          <p class="sinopsis">{{ copia().descripcion }}</p>
-          @if (meta()?.director?.length) {
-            <p class="nota">Dirección: {{ meta()?.director?.join(', ') }}</p>
-          }
-          <div class="botones">
+          </p>
+          <p class="sinopsis" [class.abierta]="sinopsisAbierta()" (click)="sinopsisAbierta.set(!sinopsisAbierta())">{{ copia().descripcion }}</p>
+          <div class="botones-ficha">
             @if (accion(); as a) {
-              <button class="principal" [disabled]="buscando()" (click)="reproducirSola(a.video, a.posicionMs)">
-                ▶ {{ a.texto }}@if (a.detalle) {<span class="detalle-boton"> · {{ a.detalle }}</span>}
+              <button class="btn-ficha principal" [disabled]="buscando()" (click)="reproducirSola(a.video, a.posicionMs)">
+                <app-icono nombre="play" />
+                <span>{{ a.texto === 'Reproducir' ? 'Reproducir' : a.texto }}</span>
+                @if (a.detalle) {
+                  <span class="detalle-boton">· {{ a.detalle }}</span>
+                }
               </button>
               @if (a.posicionMs > 0) {
-                <button class="secundario" [disabled]="buscando()" (click)="reproducirSola(a.video, 0)">↺ Desde el inicio</button>
+                <button class="btn-ficha icono" [disabled]="buscando()" (click)="reproducirSola(a.video, 0)" title="Desde el inicio" aria-label="Desde el inicio"><app-icono nombre="reiniciar" /></button>
               }
-              <button class="secundario" [disabled]="buscando()" (click)="buscar(a.video, a.posicionMs)">Elegir fuente</button>
             } @else if (esSerie) {
-              <button class="principal" disabled>Cargando…</button>
+              <button class="btn-ficha principal" disabled>Cargando…</button>
             }
             @if (idTrailer()) {
-              <button class="secundario" (click)="trailerAbierto.set(true)">▷ Tráiler</button>
+              <button class="btn-ficha" (click)="trailerAbierto.set(true)"><app-icono nombre="trailer" /><span>Tráiler</span></button>
             }
-            <button class="secundario" (click)="alternarLista()">{{ enLista() ? '✓ En Mi lista' : '＋ Mi lista' }}</button>
+            <button class="btn-ficha icono" (click)="alternarLista()" [title]="enLista() ? 'Quitar de Mi lista' : 'Agregar a Mi lista'" [attr.aria-label]="enLista() ? 'Quitar de Mi lista' : 'Agregar a Mi lista'">
+              <app-icono [nombre]="enLista() ? 'check' : 'mas'" />
+            </button>
+            @if (accion(); as a) {
+              <button class="btn-ficha icono" [disabled]="buscando()" (click)="buscar(a.video, a.posicionMs)" title="Elegir fuente" aria-label="Elegir fuente"><app-icono nombre="menu" /></button>
+            }
           </div>
         </div>
+        @if (reparto().length || meta()?.director?.length || meta()?.writer?.length) {
+          <aside class="panel-reparto" aria-label="Créditos">
+            @if (reparto().length) {
+              <div>
+                <span class="etiqueta">Reparto</span>
+                <p>{{ reparto().join(', ') }}</p>
+              </div>
+            }
+            @if (meta()?.director?.length) {
+              <div>
+                <span class="etiqueta">Dirección</span>
+                <p>{{ meta()?.director?.join(', ') }}</p>
+              </div>
+            }
+            @if (meta()?.writer?.length) {
+              <div>
+                <span class="etiqueta">Guion</span>
+                <p>{{ meta()?.writer?.slice(0, 4)?.join(', ') }}</p>
+              </div>
+            }
+          </aside>
+        }
       </div>
     </section>
 
-    <main class="pagina">
+    <main class="pagina ancha">
       @if (esSerie && temporadas().length) {
         <section>
           <div class="titulo-seccion">
@@ -189,9 +216,8 @@ const etiquetaDe = (v: Video) => 'T' + v.season + ' E' + numeroDe(v);
       }
 
       @if (elenco().length) {
-        <section>
-          <h2>Elenco</h2>
-          <div class="pista interna">
+        <app-carrusel [interna]="true">
+          <span titulo>Elenco</span>
             @for (a of elenco(); track a.id) {
               <a class="actor" [routerLink]="['/persona', a.id]">
                 @if (a.foto) {
@@ -203,14 +229,12 @@ const etiquetaDe = (v: Video) => 'T' + v.season + ' E' + numeroDe(v);
                 <span class="nota">{{ a.personaje }}</span>
               </a>
             }
-          </div>
-        </section>
+        </app-carrusel>
       }
 
       @if (parecidos().length) {
-        <section>
-          <h2>Más como esta</h2>
-          <div class="pista interna">
+        <app-carrusel [interna]="true">
+          <span titulo>Más como esta</span>
             @for (t of parecidos(); track t.imdbId) {
               <a class="poster" [routerLink]="['/titulo', t.tipo, t.imdbId]" [attr.aria-label]="t.titulo">
                 @if (t.poster) {
@@ -220,8 +244,7 @@ const etiquetaDe = (v: Video) => 'T' + v.season + ' E' + numeroDe(v);
                 }
               </a>
             }
-          </div>
-        </section>
+        </app-carrusel>
       }
     </main>
 
@@ -255,6 +278,7 @@ export class Ficha {
   protected readonly temporada = signal(1);
   protected readonly descendente = signal(false);
   protected readonly trailerAbierto = signal(false);
+  protected readonly sinopsisAbierta = signal(false);
   protected readonly fuentes = signal<Fuente[]>([]);
   protected readonly avisos = signal<string[]>([]);
   protected readonly buscando = signal(false);
@@ -288,6 +312,24 @@ export class Ficha {
     const duracion = m?.runtime && /\d+/.test(m.runtime) && !this.esSerie ? m.runtime : null;
     const puntaje = m?.imdbRating && m.imdbRating !== '0' ? '★ ' + m.imdbRating : null;
     return [m?.releaseInfo, duracion, puntaje].filter(Boolean).join('  ·  ');
+  });
+  protected readonly reparto = computed(() => (this.meta()?.cast ?? []).slice(0, 7));
+  /** Género, año, duración (o temporadas), puntaje y a qué hora terminaría si se empieza ahora. */
+  protected readonly lineaMeta = computed(() => {
+    const m = this.meta();
+    if (!m) return [];
+    const minutos = /(\d+)/.exec(m.runtime ?? '')?.[1];
+    const duracion = minutos && !this.esSerie ? (+minutos >= 60 ? Math.floor(+minutos / 60) + 'h ' : '') + (+minutos % 60) + 'm' : null;
+    const temporadas = this.esSerie ? this.temporadas().filter((t) => t > 0).length : 0;
+    const termina = minutos && !this.esSerie ? 'Termina a las ' + new Date(Date.now() + +minutos * 60000).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : null;
+    return [
+      this.copia().generos?.slice(0, 3).join(' · '),
+      m.releaseInfo,
+      duracion,
+      temporadas ? temporadas + (temporadas === 1 ? ' temporada' : ' temporadas') : null,
+      m.imdbRating && m.imdbRating !== '0' ? '★ ' + m.imdbRating : null,
+      termina,
+    ].filter((x): x is string => !!x);
   });
   protected readonly idTrailer = computed(() => {
     const lista = this.meta()?.trailers ?? [];

@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Barra } from './barra';
+import { Carrusel } from './piezas';
 import { Copia, Titulo } from './datos';
 import { Sesion } from './sesion';
 
@@ -18,7 +19,7 @@ const NUEVO_MS = 48 * 60 * 60 * 1000;
 /** Mi lista: filtros por tipo, cuatro órdenes, «Al azar» y sugerencias a partir de lo último agregado. */
 @Component({
   selector: 'app-mi-lista',
-  imports: [RouterLink, Barra],
+  imports: [RouterLink, Barra, Carrusel],
   template: `
     <app-barra />
     <main class="pagina con-barra">
@@ -69,9 +70,8 @@ const NUEVO_MS = 48 * 60 * 60 * 1000;
       }
 
       @if (sugeridos().length) {
-        <section class="fila sugeridos">
-          <h2>Para sumar a tu lista</h2>
-          <div class="pista">
+        <app-carrusel [interna]="true" class="sugeridos">
+          <span titulo>Para sumar a tu lista</span>
             @for (t of sugeridos(); track t.imdbId) {
               <a class="poster" [routerLink]="['/titulo', t.tipo, t.imdbId]" [attr.aria-label]="t.titulo">
                 @if (t.poster) {
@@ -81,8 +81,7 @@ const NUEVO_MS = 48 * 60 * 60 * 1000;
                 }
               </a>
             }
-          </div>
-        </section>
+        </app-carrusel>
       }
     </main>
   `,

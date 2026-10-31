@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { autenticar } from "../middlewares/autenticar.js";
-import { agregar, archivoSubtitulo, buscarFuentes, buscarSubtitulos, enlaceDeFuente, filasDeAddons, listar, quitar } from "../services/addons.service.js";
+import { agregar, archivoSubtitulo, buscarFuentes, buscarSubtitulos, cambiarEnInicio, enlaceDeFuente, filasDeAddons, listar, quitar } from "../services/addons.service.js";
 
 const router = Router();
 
@@ -11,6 +11,10 @@ router.get("/addons", async (req, res) => {
 });
 router.post("/addons", async (req, res) => {
   res.status(201).json({ addon: await agregar(req.cuentaId, req.body?.url) });
+});
+router.patch("/addons/:id", async (req, res) => {
+  await cambiarEnInicio(req.cuentaId, req.params.id, req.body?.enInicio);
+  res.status(204).end();
 });
 router.delete("/addons/:id", async (req, res) => {
   await quitar(req.cuentaId, req.params.id);

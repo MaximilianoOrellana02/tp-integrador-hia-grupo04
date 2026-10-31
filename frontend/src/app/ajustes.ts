@@ -3,12 +3,14 @@ import { Component, inject, OnDestroy, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AvatarVista } from './avatar';
+import { Apariencia, ModoAnimaciones } from './apariencia';
 import { Barra } from './barra';
 import { Perfil, Sesion } from './sesion';
 
 interface Addon {
   id: number;
   nombre: string;
+  enInicio: boolean;
 }
 
 interface AvatarElegible {
@@ -86,8 +88,19 @@ const ESPERA_GUARDADO_MS = 700;
       }
 
       <section class="tarjeta vidrio ancha">
+        <h2>Apariencia</h2>
+        <h3>Animaciones</h3>
+        <div class="filtros">
+          @for (m of modosAnimacion; track m.valor) {
+            <button class="chip-filtro" [class.activo]="apariencia.modo() === m.valor" (click)="apariencia.elegir(m.valor)">{{ m.nombre }}</button>
+          }
+        </div>
+        <p class="nota">{{ ayudaAnimaciones() }}</p>
+      </section>
+
+      <section class="tarjeta vidrio ancha">
         <h2>Addons</h2>
-        <p class="nota">Pegá la dirección de un addon de Stremio, ya configurado. Sus fuentes aparecen en la ficha y sus catálogos en Para ti. Puede llevar tu clave: se guarda cifrada y no se vuelve a mostrar.</p>
+        <p class="nota">Pegá la dirección de un addon de Stremio, ya configurado. Sus fuentes aparecen en la ficha y sus catálogos en Para ti (lo podés apagar por addon). Puede llevar tu clave: se guarda cifrada y no se vuelve a mostrar.</p>
         <form class="fila-formulario" (ngSubmit)="agregar()">
           <input name="url" type="password" autocomplete="off" placeholder="https://…/manifest.json" aria-label="Dirección del manifest" required [(ngModel)]="url" />
           <button class="principal" [disabled]="enviando()">Agregar</button>
@@ -101,7 +114,12 @@ const ESPERA_GUARDADO_MS = 700;
           @for (a of addons(); track a.id) {
             <li>
               <b>{{ a.nombre }}</b>
-              <button class="enlace" (click)="quitar(a)">Quitar</button>
+              <span class="botones">
+                <button class="chip-filtro" [class.activo]="a.enInicio" (click)="alternarInicio(a)" [attr.aria-pressed]="a.enInicio" [attr.aria-label]="'Mostrar los catálogos de ' + a.nombre + ' en Para ti'">
+                  Para ti: {{ a.enInicio ? 'Sí' : 'No' }}
+                </button>
+                <button class="enlace" (click)="quitar(a)">Quitar</button>
+              </span>
             </li>
           }
         </ul>
@@ -128,6 +146,12 @@ export class Ajustes implements OnDestroy {
   private readonly sesion = inject(Sesion);
   private readonly router = inject(Router);
 
+  protected readonly apariencia = inject(Apariencia);
+  protected readonly modosAnimacion: { valor: ModoAnimaciones; nombre: string }[] = [
+    { valor: 'sistema', nombre: 'Según el sistema' },
+    { valor: 'siempre', nombre: 'Siempre' },
+    { valor: 'nunca', nombre: 'Nunca' },
+  ];
   protected readonly perfil = this.sesion.perfil;
   protected readonly calidades = CALIDADES;
   protected readonly addons = signal<Addon[]>([]);
@@ -159,6 +183,19 @@ export class Ajustes implements OnDestroy {
 
   protected nombreIdioma(clave: string) {
     return NOMBRES_IDIOMA[clave] ?? clave;
+  }
+
+  protected ayudaAnimaciones() {
+    switch (this.apariencia.modo()) {
+      case 'siempre':
+        return 'Las filas se deslizan con animación, aunque tu sistema tenga las animaciones apagadas.';
+      case 'nunca':
+        return 'Nada se mueve: las filas saltan y el destacado no cambia solo.';
+      default:
+        return this.apariencia.sistemaReduce()
+          ? 'Tu sistema tiene las animaciones desactivadas (en Windows, «Efectos de animación»), por eso así no se mueve nada. Elegí «Siempre» para verlas.'
+          : 'Se mueve salvo que tu sistema pida reducir el movimiento.';
+    }
   }
 
   protected ayudaCalidad() {
@@ -265,6 +302,15 @@ export class Ajustes implements OnDestroy {
         this.aviso.set(e.error?.error ?? 'No se pudo agregar.');
         this.enviando.set(false);
       },
+    });
+  }
+
+  /** Muestra u oculta los catálogos del addon en Para ti; al instante, y vuelve atrás si falla. */
+  protected alternarInicio(addon: Addon) {
+    const nuevo = !addon.enInicio;
+    this.addons.update((l) => l.map((x) => (x.id === addon.id ? { ...x, enInicio: nuevo } : x)));
+    this.http.patch('/api/mis/addons/' + addon.id, { enInicio: nuevo }).subscribe({
+      error: () => this.addons.update((l) => l.map((x) => (x.id === addon.id ? { ...x, enInicio: !nuevo } : x))),
     });
   }
 

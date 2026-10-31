@@ -14,7 +14,11 @@ export interface Copia {
 }
 
 /** Un título como lo arman las filas del backend. */
+export type EstiloFila = 'comun' | 'panoramica' | 'grande' | 'apaisada' | 'vitrina';
+
 export interface Titulo {
+  puntajeImdb?: string | null;
+  puntaje?: number | string | null;
   imdbId?: string;
   tipo: string;
   titulo: string;
@@ -28,6 +32,8 @@ export interface Titulo {
 
 /** Una fila de Inicio, Películas o Series: destacado, top10, posters, banner, generos o sagas. */
 export interface Fila {
+  /** Cómo se dibujan sus portadas (lo asigna la pantalla, según el orden de las filas). */
+  estilo?: EstiloFila;
   tipo: string;
   nombre?: string;
   detalle?: string;

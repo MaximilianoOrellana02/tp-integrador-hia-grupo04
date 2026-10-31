@@ -1432,11 +1432,17 @@ select option {
   }
 }
 
+/* Menos movimiento: lo pide el sistema (salvo que el modo sea «Siempre») o la persona eligió «Nunca» */
 @media (prefers-reduced-motion: reduce) {
-  * {
+  html:not([data-animaciones='siempre']) * {
     transition: none !important;
     scroll-behavior: auto !important;
   }
+}
+
+html[data-animaciones='nunca'] * {
+  transition: none !important;
+  scroll-behavior: auto !important;
 }
 
 /* Lista de fuentes con detalle */
@@ -1756,4 +1762,514 @@ label.principal {
 .apagado {
   opacity: 0.4;
   pointer-events: none;
+}
+
+/* Filas que se deslizan y portadas de distintos tamaños */
+app-carrusel {
+  display: block;
+}
+
+.fila-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 clamp(16px, 4vw, 48px) 8px;
+}
+
+.fila-cabecera h2,
+.fila .fila-cabecera h2 {
+  margin: 0;
+}
+
+.fila.interna .fila-cabecera {
+  margin-right: 0;
+  margin-left: 0;
+}
+
+.fila.interna .pista {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.flechas {
+  display: flex;
+  gap: 8px;
+}
+
+.flecha {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0 0 2px;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 12px;
+  background: transparent;
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.flecha:hover:not(:disabled) {
+  background: var(--panel-alto);
+}
+
+.flecha:disabled {
+  border-color: var(--borde);
+  color: rgba(255, 255, 255, 0.28);
+  cursor: default;
+}
+
+.cuerpo-fila {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.cuerpo-fila > .pista {
+  flex: 1;
+  min-width: 0;
+  scroll-snap-type: x proximity;
+}
+
+.cuerpo-fila > .pista > * {
+  scroll-snap-align: start;
+}
+
+.sugeridos {
+  margin: 36px 0 0;
+}
+
+/* Portadas grandes */
+.poster.grande {
+  width: 230px;
+}
+
+/* Panorámicas y apaisadas: imagen horizontal con el texto encima */
+.tarjeta-pano,
+.tarjeta-apaisada,
+.vitrina {
+  position: relative;
+  display: block;
+  flex: none;
+  overflow: hidden;
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  background: var(--panel);
+  color: #fff;
+  text-decoration: none;
+  transition: transform 0.15s;
+}
+
+.tarjeta-pano {
+  width: 380px;
+  aspect-ratio: 16 / 9;
+}
+
+.tarjeta-apaisada {
+  width: 290px;
+  aspect-ratio: 16 / 9;
+}
+
+.tarjeta-pano img:not(.pano-logo),
+.tarjeta-apaisada img,
+.vitrina-fondo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s;
+}
+
+.tarjeta-pano:hover,
+.tarjeta-apaisada:hover,
+.vitrina:hover {
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.tarjeta-pano:hover img:not(.pano-logo),
+.tarjeta-apaisada:hover img {
+  transform: scale(1.05);
+}
+
+.pano-texto {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 36px 14px 12px;
+  background: linear-gradient(0deg, rgba(8, 8, 8, 0.95), rgba(8, 8, 8, 0.6) 60%, transparent);
+}
+
+.pano-logo {
+  max-width: 55%;
+  max-height: 42px;
+  object-fit: contain;
+  object-position: left bottom;
+}
+
+.pano-titulo {
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+.pano-datos {
+  color: var(--suave);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.pano-sinopsis {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Vitrina: un panel grande con el elegido, y las portadas al lado */
+.vitrina {
+  width: min(520px, 80vw);
+  margin-left: clamp(16px, 4vw, 48px);
+  aspect-ratio: 16 / 9;
+}
+
+.fila.interna .vitrina {
+  margin-left: 0;
+}
+
+.vitrina .pano-texto {
+  padding: 60px 20px 18px;
+}
+
+.vitrina .pano-titulo {
+  font-size: 22px;
+}
+
+.vitrina .pano-logo {
+  max-height: 64px;
+}
+
+.vitrina .pano-sinopsis {
+  -webkit-line-clamp: 3;
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .tarjeta-pano {
+    width: 300px;
+  }
+
+  .tarjeta-apaisada {
+    width: 240px;
+  }
+
+  .poster.grande {
+    width: 170px;
+  }
+
+  .vitrina {
+    display: none;
+  }
+}
+
+/* El deslizamiento por tramos tiene que respetar el margen de la fila: sin esto alinea la primera
+   portada contra el borde izquierdo y se come el margen */
+.cuerpo-fila > .pista {
+  scroll-padding-inline: clamp(16px, 4vw, 48px);
+}
+
+.fila.interna .cuerpo-fila > .pista {
+  scroll-padding-inline: 0;
+}
+
+.cuerpo-fila > .pista.animando {
+  scroll-snap-type: none;
+}
+
+.flecha {
+  transition: background 0.15s, transform 0.1s;
+}
+
+.flecha:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+/* Portadas horizontales: la imagen sola, con el logo del título abajo a la izquierda */
+.tarjeta-pano,
+.tarjeta-apaisada {
+  border-radius: 16px;
+}
+
+.tarjeta-pano {
+  width: 360px;
+}
+
+.tarjeta-apaisada {
+  width: 280px;
+}
+
+.pano-fondo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s;
+}
+
+.tarjeta-pano:hover .pano-fondo,
+.tarjeta-apaisada:hover .pano-fondo {
+  transform: scale(1.05);
+}
+
+.tarjeta-pano .pano-texto,
+.tarjeta-apaisada .pano-texto {
+  padding: 48px 16px 14px;
+  background: linear-gradient(0deg, rgba(8, 8, 8, 0.78), transparent);
+}
+
+.tarjeta-pano .pano-logo,
+.tarjeta-apaisada .pano-logo {
+  position: static;
+  inset: auto;
+  width: auto;
+  height: auto;
+  max-width: 64%;
+  max-height: 54px;
+  object-fit: contain;
+  transform: none;
+}
+
+.tarjeta-apaisada .pano-logo {
+  max-height: 40px;
+}
+
+.tarjeta-apaisada:hover .pano-logo,
+.tarjeta-pano:hover .pano-logo {
+  transform: none;
+}
+
+@media (max-width: 640px) {
+  .tarjeta-pano {
+    width: 290px;
+  }
+
+  .tarjeta-apaisada {
+    width: 230px;
+  }
+}
+
+/* Ficha a pantalla casi completa */
+.barra-izquierda {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.boton-cuadrado {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 12px;
+  background: rgba(8, 8, 8, 0.6);
+  color: #fff;
+}
+
+.boton-cuadrado:hover {
+  background: var(--panel-alto);
+}
+
+.ficha-pantalla {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: 100vh;
+  padding: 96px 32px 32px;
+  background: var(--fondo) center top / cover;
+}
+
+.ficha-pantalla::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(8, 8, 8, 0.96) 0%, rgba(8, 8, 8, 0.55) 34%, transparent 62%), linear-gradient(90deg, rgba(8, 8, 8, 0.72), transparent 58%);
+}
+
+.ficha-pie {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  width: 100%;
+}
+
+.ficha-izquierda {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  max-width: 680px;
+}
+
+.logo-ficha {
+  max-width: min(100%, 440px);
+  max-height: 150px;
+  margin-bottom: 18px;
+  object-fit: contain;
+  object-position: left bottom;
+}
+
+.titulo-ficha {
+  margin: 0 0 18px;
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+
+.linea-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.linea-meta span + span::before {
+  content: '';
+  display: inline-block;
+  width: 1px;
+  height: 14px;
+  margin: 0 12px;
+  background: var(--borde-fuerte);
+  vertical-align: middle;
+}
+
+.ficha-izquierda .sinopsis {
+  max-width: 640px;
+  margin-bottom: 20px;
+  color: var(--suave);
+  cursor: pointer;
+}
+
+.ficha-izquierda .sinopsis.abierta {
+  display: block;
+}
+
+.botones-ficha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn-ficha {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 50px;
+  padding: 0 24px;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 14px;
+  background: rgba(8, 8, 8, 0.7);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.btn-ficha:hover:not(:disabled) {
+  background: var(--panel-alto);
+}
+
+.btn-ficha:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.btn-ficha.icono {
+  width: 50px;
+  padding: 0;
+}
+
+.btn-ficha.principal {
+  border-color: #fff;
+  background: #fff;
+  color: var(--fondo);
+}
+
+.btn-ficha.principal:hover:not(:disabled) {
+  background: #e6e6e6;
+}
+
+.btn-ficha .detalle-boton {
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+.panel-reparto {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 16px;
+  width: 340px;
+  padding: 18px 20px;
+  border: 1px solid var(--borde);
+  border-radius: 16px;
+  background: rgba(8, 8, 8, 0.72);
+}
+
+.panel-reparto .etiqueta {
+  margin-bottom: 6px;
+  font-size: 10px;
+}
+
+.panel-reparto p {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.pagina.ancha {
+  width: 100%;
+  padding: 32px 32px 56px;
+}
+
+@media (max-width: 900px) {
+  .ficha-pie {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .panel-reparto {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .ficha-pantalla {
+    padding: 88px 16px 24px;
+  }
+
+  .pagina.ancha {
+    padding: 24px 16px 48px;
+  }
+
+  .btn-ficha {
+    padding: 0 18px;
+  }
 }

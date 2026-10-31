@@ -1,16 +1,22 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, input, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AvatarVista } from './avatar';
+import { Icono } from './iconos';
 import { Sesion } from './sesion';
 
 /** La barra de arriba: cápsula de vidrio con las secciones, la lupa y el menú del perfil. */
 @Component({
   selector: 'app-barra',
-  imports: [RouterLink, RouterLinkActive, AvatarVista],
+  imports: [RouterLink, RouterLinkActive, AvatarVista, Icono],
   template: `
     <header class="barra-fija">
-      <a class="marca chica" routerLink="/"><span class="logo-cuadro" aria-hidden="true"></span>MaxFlix</a>
+      <div class="barra-izquierda">
+        @if (atras()) {
+          <button class="boton-cuadrado" (click)="volver()" aria-label="Volver"><app-icono nombre="atras" [tamano]="22" /></button>
+        }
+        <a class="marca chica" routerLink="/"><span class="logo-cuadro" aria-hidden="true"></span>MaxFlix</a>
+      </div>
       <nav class="capsula" aria-label="Secciones">
         <a routerLink="/" routerLinkActive="activa" [routerLinkActiveOptions]="{ exact: true }">Para ti</a>
         <a routerLink="/peliculas" routerLinkActive="activa">Películas</a>
@@ -43,6 +49,8 @@ import { Sesion } from './sesion';
 export class Barra {
   protected readonly sesion = inject(Sesion);
   private readonly router = inject(Router);
+  /** Muestra un botón cuadrado de volver a la izquierda del logo (en la ficha). */
+  readonly atras = input(false);
   protected readonly menu = signal(false);
 
   constructor() {
@@ -55,6 +63,10 @@ export class Barra {
           error: () => (this.sesion.rolCargado = false),
         });
     }
+  }
+
+  protected volver() {
+    history.length > 1 ? history.back() : this.router.navigateByUrl('/');
   }
 
   protected salir() {

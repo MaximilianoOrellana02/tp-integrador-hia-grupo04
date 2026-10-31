@@ -2,8 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Barra } from './barra';
-import { Copia, Fila, Plataforma, Progreso, terminado } from './datos';
-import { FilaVista, Heroe } from './piezas';
+import { EstiloFila, Fila, Plataforma, Progreso, terminado } from './datos';
+import { Carrusel, FilaVista, Heroe } from './piezas';
 import { Sesion } from './sesion';
 
 type Seccion = 'inicio' | 'peliculas' | 'series' | 'genero' | 'originales' | 'marca';
@@ -11,6 +11,8 @@ type Seccion = 'inicio' | 'peliculas' | 'series' | 'genero' | 'originales' | 'ma
 const RUTAS = { inicio: '/api/inicio', peliculas: '/api/peliculas', series: '/api/series' } as const;
 // Cuántos píxeles antes del final se pide la página siguiente
 const ADELANTO_PX = 900;
+// Cómo se dibujan, una tras otra, las filas de portadas del backend (las de pocos títulos quedan comunes)
+const CICLO: EstiloFila[] = ['panoramica', 'comun', 'grande', 'apaisada', 'comun', 'vitrina'];
 const MARCAS = [
   { id: 'disney', nombre: 'Disney', color: '#1546d8' },
   { id: 'marvel', nombre: 'Marvel', color: '#e62429' },
@@ -19,11 +21,11 @@ const MARCAS = [
 /**
  * Para ti, Películas, Series, un género, «Originales de» y una marca de Disney+: el mismo esqueleto
  * con otro origen de datos. Las filas llegan por páginas y la siguiente se pide al acercarse al final.
- * Solo Para ti suma «Seguir viendo», las películas libres, Mi lista y los catálogos de los addons.
+ * Solo Para ti suma «Seguir viendo» y los catálogos de los addons que la cuenta eligió mostrar.
  */
 @Component({
   selector: 'app-explorar',
-  imports: [RouterLink, Barra, Heroe, FilaVista],
+  imports: [RouterLink, Barra, Heroe, FilaVista, Carrusel],
   template: `
     <app-barra />
     @if (destacados().length) {
@@ -63,9 +65,8 @@ const MARCAS = [
         <p class="aviso centrado-texto">No se pudo cargar. Probá de nuevo en un momento.</p>
       }
       @if (seguir().length) {
-        <section class="fila">
-          <h2>Seguir viendo</h2>
-          <div class="pista">
+        <app-carrusel>
+          <span titulo>Seguir viendo</span>
             @for (p of seguir(); track p.idVideo) {
               <a class="tarjeta-seguir" [routerLink]="['/titulo', p.titulo.tipo, p.titulo.id]">
                 <div class="imagen-seguir" [style.background-image]="imagen(p.episodio?.miniatura ?? p.titulo.fondo ?? p.titulo.poster)">
@@ -78,8 +79,7 @@ const MARCAS = [
                 }
               </a>
             }
-          </div>
-        </section>
+        </app-carrusel>
       }
       @for (fila of filas(); track $index) {
         <app-fila [fila]="fila" />
@@ -102,8 +102,6 @@ export class Explorar {
   protected readonly marcas = MARCAS;
   private readonly delBackend = signal<Fila[]>([]);
   private readonly deAddons = signal<Fila[]>([]);
-  private readonly libres = signal<Copia[]>([]);
-  private readonly lista = signal<Copia[]>([]);
   private readonly progresos = signal<Progreso[]>([]);
   protected readonly plataformas = signal<Plataforma[]>([]);
   protected readonly plataforma = signal<Plataforma | null>(null);
@@ -144,13 +142,11 @@ export class Explorar {
     });
   });
   protected readonly filas = computed<Fila[]>(() => {
-    const aFila = (nombre: string, copias: Copia[]): Fila => ({
-      tipo: 'posters',
-      nombre,
-      items: copias.map((c) => ({ titulo: c.nombre, tipo: c.tipo, imdbId: c.id, poster: c.poster })),
-    });
-    const propias = this.seccion === 'inicio' ? [aFila('Películas libres', this.libres()), aFila('Mi lista', this.lista()), ...this.deAddons()] : [];
-    const delServidor = this.delBackend().filter((f) => f.tipo !== 'destacado');
+    const propias = this.seccion === 'inicio' ? this.deAddons() : [];
+    let n = 0;
+    const delServidor = this.delBackend()
+      .filter((f) => f.tipo !== 'destacado')
+      .map((f) => (f.tipo === 'posters' && (f.items?.filter((t) => t.imdbId).length ?? 0) >= 5 ? { ...f, estilo: CICLO[n++ % CICLO.length] } : f));
     return [...propias, ...delServidor].filter((f) => f.tipo === 'banner' || (f.tipo === 'generos' ? f.generos?.length : f.tipo === 'sagas' ? f.sagas?.length : f.items?.some((t) => t.imdbId)));
   });
 
@@ -163,8 +159,6 @@ export class Explorar {
     this.pedirPagina();
     if (this.seccion === 'inicio') {
       this.http.get<{ filas: Fila[] }>('/api/mis/filas').subscribe({ next: (r) => this.deAddons.set(r.filas), error: () => undefined });
-      this.http.get<{ videos: Copia[] }>('/api/videos').subscribe((r) => this.libres.set(r.videos));
-      this.http.get<{ lista: { titulo: Copia }[] }>('/api/perfiles/' + perfil.id + '/lista').subscribe((r) => this.lista.set(r.lista.map((x) => x.titulo)));
       this.http.get<{ progreso: Progreso[] }>('/api/perfiles/' + perfil.id + '/progreso').subscribe((r) => this.progresos.set(r.progreso));
     }
     const revisar = () => this.revisar();

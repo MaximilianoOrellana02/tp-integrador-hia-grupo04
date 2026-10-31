@@ -27,7 +27,7 @@ function limpiarVencidas() {
 }
 
 export function listar(cuentaId) {
-  return Addon.findAll({ where: { cuentaId }, attributes: ["id", "nombre"], order: [["id", "ASC"]] });
+  return Addon.findAll({ where: { cuentaId }, attributes: ["id", "nombre", "enInicio"], order: [["id", "ASC"]] });
 }
 
 const ofrece = (manifest, recurso) => (manifest.resources ?? []).some((r) => (typeof r === "string" ? r : r?.name) === recurso);
@@ -66,6 +66,13 @@ export async function agregar(cuentaId, urlManifest) {
     huella: huella(url.href),
   });
   return { id: creado.id, nombre: creado.nombre };
+}
+
+/** Muestra u oculta los catálogos de un addon en «Para ti». Sus fuentes y subtítulos siguen funcionando. */
+export async function cambiarEnInicio(cuentaId, id, valor) {
+  if (typeof valor !== "boolean") throw new ErrorHttp(400, "Falta indicar si se muestra o no");
+  const [cambiados] = await Addon.update({ enInicio: valor }, { where: { id: Number(id) || 0, cuentaId } });
+  if (!cambiados) throw new ErrorHttp(404, "Addon no encontrado");
 }
 
 export async function quitar(cuentaId, id) {
@@ -189,7 +196,7 @@ const catalogoListable = (c) =>
  * ficha y los demás addons. Un póster que no sea https no se usa.
  */
 export async function filasDeAddons(cuentaId) {
-  const addons = await Addon.findAll({ where: { cuentaId }, order: [["id", "ASC"]] });
+  const addons = await Addon.findAll({ where: { cuentaId, enInicio: true }, order: [["id", "ASC"]] });
   const porAddon = await Promise.all(
     addons.map(async (addon) => {
       let manifest;
